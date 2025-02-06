@@ -34,7 +34,7 @@ export function Avatar(props) {
 
   return (
     <group {...props} ref={group} dispose={null}>
-      <group rotation={[0, Math.PI / 2, 0]} position={[.37,-.25,.25]} scale={0.004}>
+      <group rotation={[0, Math.PI*3, 0]} position={[-.3,.3,-.25]} scale={0.004}>
         <primitive object={nodes.mixamorigHips} />
         <skinnedMesh geometry={nodes.mesh_3.geometry} material={materials.Color_} skeleton={nodes.mesh_3.skeleton} />
         <skinnedMesh geometry={nodes.mesh_5.geometry} material={materials.Color_} skeleton={nodes.mesh_5.skeleton} />

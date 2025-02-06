@@ -3,9 +3,6 @@ import { OrbitControls } from "@react-three/drei";
 import { Scene } from "./Scene.jsx";
 import { Avatar } from "./Avatar.jsx";
 import { useControls } from "leva";
-import { Room } from "./Newportfolioroom.jsx";
-import { Model } from "./Lowpolyroom1.jsx";
-
 
 function App() {
   const { animation } = useControls({
@@ -22,9 +19,8 @@ function App() {
     >
       <ambientLight intensity={0.5} />
       <directionalLight position={[5, 5, 5]} intensity={2} />
-      {/* <Scene /> */}
+      <Scene />
       <Avatar  animation={animation} />
-      <Model />
       <OrbitControls />
     </Canvas>
   );

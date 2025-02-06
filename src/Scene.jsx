@@ -10,251 +10,114 @@ import { Vector3 } from "three";
 import { useFrame } from "@react-three/fiber";
 
 export function Scene({ props }) {
-  const { nodes, materials } = useGLTF("../models/testbedroom.glb");
-  const [targetPosition, setTargetPosition] = useState(null); // Target position for the camera
-  const [lookAtTarget, setLookAtTarget] = useState(null); // Target to look at
-
-  const monitorRef = useRef(); // Reference to the monitor group
-
-  // Handle camera movement in each frame
-  useFrame(({ camera }) => {
-    if (targetPosition) {
-      // Smoothly interpolate the camera position
-      camera.position.lerp(targetPosition, 0.025);
-
-      // Dynamically make the camera look at the selected target
-      if (lookAtTarget) {
-        camera.lookAt(lookAtTarget.position);
-      }
-    }
-  });
-
-  const handleObjectClick = (objectRef) => {
-    const objectPosition = objectRef.current.position.clone();
-    const newCameraPosition = new Vector3(
-      objectPosition.x, // Adjust offset as needed
-      objectPosition.y,
-      objectPosition.z + 1.5
-    );
-
-    setTargetPosition(newCameraPosition); // Update the target position
-    setLookAtTarget(objectRef.current); // Update the look-at target
-  };
-
-  materials["Material #154"].transparent = true;
-  materials["Material #154"].opacity = 0.9; // Adjust opacity to make the monitor screen semi-transparent
-
+  const { nodes, materials } = useGLTF('../models/lowpolyroom1.glb')
   return (
-    <>
-      <group {...props} dispose={null} position={[0, -0.5, 0]}>
-        {/* <pointLight intensity={54351.413} decay={2} position={[3.266, 5.896, -1.005]} rotation={[-1.839, 0.602, 1.932]} /> */}
-        <PerspectiveCamera
-          makeDefault={false}
-          far={100}
-          near={0.1}
-          fov={22.895}
-          position={[7.315, 4.95, 6.926]}
-          rotation={[-0.627, 0.71, 0.441]}
-        />
-        <mesh
-          geometry={nodes.floor.geometry}
-          material={materials["Material #60"]}
-        />
-        <mesh
-          geometry={nodes.shelf1.geometry}
-          material={materials["Material #60"]}
-        />
-        <mesh
-          geometry={nodes.shelf2.geometry}
-          material={materials["Material #60"]}
-        />
-        <mesh
-          geometry={nodes.keyboard.geometry}
-          material={materials["Material #154"]}
-        />
-        <mesh
-          geometry={nodes.mouse.geometry}
-          material={materials["Material #154"]}
-        />
-        <mesh
-          geometry={nodes.Mesh.geometry}
-          material={materials["Material #25"]}
-        />
-        <mesh
-          geometry={nodes.Mesh_1.geometry}
-          material={materials["Material #26"]}
-        />
-        <mesh
-          geometry={nodes.Mesh_2.geometry}
-          material={materials["Material #140"]}
-        />
-        <mesh
-          geometry={nodes.Mesh010.geometry}
-          material={materials["Material #25"]}
-        />
-        <mesh
-          geometry={nodes.Mesh010_1.geometry}
-          material={materials["Material #60"]}
-        />
-        <mesh
-          geometry={nodes.Mesh010_2.geometry}
-          material={materials["Material #139"]}
-        />
-        <mesh
-          geometry={nodes.Mesh024.geometry}
-          material={materials["Material #25"]}
-        />
-        <mesh
-          geometry={nodes.Mesh024_1.geometry}
-          material={materials["Material #62"]}
-        />
-        <mesh
-          geometry={nodes.Mesh024_2.geometry}
-          material={materials["Material #63"]}
-        />
-        <mesh
-          geometry={nodes.Mesh024_3.geometry}
-          material={materials["Material #65"]}
-        />
-        <mesh
-          geometry={nodes.Mesh024_4.geometry}
-          material={materials["Material #66"]}
-        />
-        <mesh
-          geometry={nodes.Mesh024_5.geometry}
-          material={materials["Material #67"]}
-        />
-        <mesh
-          geometry={nodes.Mesh024_6.geometry}
-          material={materials["Material #61"]}
-        />
-        <mesh
-          geometry={nodes.Mesh024_7.geometry}
-          material={materials["Material #26"]}
-        />
-        <mesh
-          geometry={nodes.Mesh032.geometry}
-          material={materials["Material #177"]}
-        />
-        <mesh
-          geometry={nodes.Mesh032_1.geometry}
-          material={materials["Material #60"]}
-        />
-        <mesh
-          geometry={nodes.Mesh033.geometry}
-          material={materials["Material #177"]}
-        />
-        <mesh
-          geometry={nodes.Mesh033_1.geometry}
-          material={materials["Material #139"]}
-        />
-        <mesh
-          geometry={nodes.Mesh044.geometry}
-          material={materials["Material #154"]}
-        />
-        <mesh
-          geometry={nodes.Mesh044_1.geometry}
-          material={materials["Material #139"]}
-        />
-        <mesh
-          geometry={nodes.Mesh044_2.geometry}
-          material={materials["Material #25"]}
-        />
-        <mesh
-          geometry={nodes.Mesh051.geometry}
-          material={materials["Material #61"]}
-        />
-        <mesh
-          geometry={nodes.Mesh051_1.geometry}
-          material={materials["Material #25"]}
-        />
-        <mesh
-          geometry={nodes.Mesh055.geometry}
-          material={materials["Material #267"]}
-        />
-        <mesh
-          geometry={nodes.Mesh055_1.geometry}
-          material={materials["Material #25"]}
-        />
-        <mesh
-          geometry={nodes.Mesh055_2.geometry}
-          material={materials["Material #61"]}
-        />
-        <mesh
-          geometry={nodes.Mesh055_3.geometry}
-          material={materials["Material #153"]}
-        />
-        <mesh
-          geometry={nodes.Mesh059.geometry}
-          material={materials["Material #177"]}
-        />
-        <mesh
-          geometry={nodes.Mesh059_1.geometry}
-          material={materials["Material #26"]}
-        />
-        <mesh
-          geometry={nodes.Mesh059_2.geometry}
-          material={materials["Material #153"]}
-        />
-        <mesh
-          geometry={nodes.Mesh060.geometry}
-          material={materials["Material #267"]}
-        />
-        <mesh
-          geometry={nodes.Mesh060_1.geometry}
-          material={materials["Material #25"]}
-        />
-        <group
-          ref={monitorRef}
-          onClick={() => handleObjectClick(monitorRef)}
-        >
-          <Selection>
-            <EffectComposer autoClear={false}>
-              <Outline blur edgeStrength={100} visibleEdgeColor={0xffffff} />
-            </EffectComposer>
-            <Select enabled>
-              <mesh
-                geometry={nodes.Mesh045.geometry}
-                material={materials["Material #154"]}
-              />
-              {/* <mesh
-                geometry={nodes.Mesh045_1.geometry}
-                material={materials["Material #139"]}
-              /> */}
-              <mesh geometry={nodes.Mesh045_1.geometry}>
-                <Html
-                  className="content"
-                  position={[.78, .715, .168]} // Adjust the position to center the content on the monitor
-                  rotation-y={-1.3}
-                  scale={0.1}
-                  transform
-                >
-                  <div
-                    style={{
-                      width: "116px", // Adjust width as needed
-                      height: "72px", // Adjust height as needed
-                      background: "white",
-                      border: "2px solid red", // Add a red border to visualize boundaries
-                    }}
-                  >
-                    <h1 style={{ color: "purple", fontSize: "8px" }}>Monitor Content</h1>
-                  </div>
-                </Html>
-              </mesh>
-            </Select>
-          </Selection>
-        </group>
-        <mesh
-          geometry={nodes.Mesh050.geometry}
-          material={materials["Material #154"]}
-        />
-        <mesh
-          geometry={nodes.Mesh050_1.geometry}
-          material={materials["Material #139"]}
-        />
+    <group {...props} dispose={null}>
+      <group position={[-0.34, 0.229, -0.697]}>
+        <mesh geometry={nodes.Plane.geometry} material={materials.metallic} />
+        <mesh geometry={nodes.Plane_1.geometry} material={materials.black_wood} />
       </group>
-    </>
+      <group position={[-0.321, 0.511, -0.857]} rotation={[Math.PI / 2, 0, -0.007]} scale={0.133}>
+        <mesh geometry={nodes.Plane001.geometry} material={materials.blackplastic} />
+        <mesh geometry={nodes.Plane001_1.geometry} material={materials.metallicplastic} />
+        <mesh geometry={nodes.Plane001_2.geometry} material={materials.monitor1} />
+      </group>
+      <group position={[0.078, 0.501, -0.82]} rotation={[0, -0.182, 0]}>
+        <mesh geometry={nodes.Plane002.geometry} material={materials.blackplastic} />
+        <mesh geometry={nodes.Plane002_1.geometry} material={materials.metallicplastic} />
+        <mesh geometry={nodes.Plane002_2.geometry} material={materials.emission_blue} />
+        <mesh geometry={nodes.Plane002_3.geometry} material={materials.monitor2} />
+      </group>
+      <group position={[-0.732, 0.626, -0.841]} rotation={[0, -0.01, 0]} scale={0.108}>
+        <mesh geometry={nodes.Cube001.geometry} material={materials.blackplastic} />
+        <mesh geometry={nodes.Cube001_1.geometry} material={materials.emission_blue} />
+        <mesh geometry={nodes.Cube001_2.geometry} material={materials.metallic} />
+        <mesh geometry={nodes.Cube001_3.geometry} material={materials.motherboard_green} />
+        <mesh geometry={nodes.Cube001_4.geometry} material={materials.emission_red_lite} />
+        <mesh geometry={nodes.Cube001_5.geometry} material={materials.metallicplastic} />
+        <mesh geometry={nodes.Cube001_6.geometry} material={materials.emission_pink} />
+        <mesh geometry={nodes.Cube001_7.geometry} material={materials.wall} />
+      </group>
+      <group position={[-0.312, 0.486, -0.776]} scale={0.02}>
+        <mesh geometry={nodes.Cube003.geometry} material={materials.blackplastic} />
+        <mesh geometry={nodes.Cube003_1.geometry} material={materials.metallicplastic} />
+        <mesh geometry={nodes.Cube003_2.geometry} material={materials.emission_green} />
+      </group>
+      <group position={[-0.329, 0.457, -0.774]} rotation={[0, 0.027, 0]} scale={[0.099, 0.083, 0.083]}>
+        <mesh geometry={nodes.Plane021.geometry} material={materials.blackplastic} />
+        <mesh geometry={nodes.Plane021_1.geometry} material={materials.emission_red} />
+        <mesh geometry={nodes.Plane021_2.geometry} material={materials.emission_pink} />
+        <mesh geometry={nodes.Plane021_3.geometry} material={materials.mousepad} />
+        <mesh geometry={nodes.Plane021_4.geometry} material={materials.emission_blue} />
+        <mesh geometry={nodes.Plane021_5.geometry} material={materials.emission_green} />
+        <mesh geometry={nodes.Plane021_6.geometry} material={materials.emission_orange} />
+        <mesh geometry={nodes.Plane021_7.geometry} material={materials.emission_purple} />
+      </group>
+      <group position={[-0.214, 1.036, -0.997]} rotation={[Math.PI / 2, 0, 0]} scale={0.089}>
+        <mesh geometry={nodes.Plane022.geometry} material={materials.bbposter} />
+        <mesh geometry={nodes.Plane022_1.geometry} material={materials.metallic} />
+        <mesh geometry={nodes.Plane022_2.geometry} material={materials.plasticred} />
+        <mesh geometry={nodes.Plane022_3.geometry} material={materials.xfilesposter} />
+        <mesh geometry={nodes.Plane022_4.geometry} material={materials.stposter} />
+      </group>
+      <mesh geometry={nodes.shelving.geometry} material={materials.metallicplastic} position={[0.656, 0.728, -0.764]} scale={0.143} />
+      <group position={[-0.712, 0.121, -0.719]} scale={0.104}>
+        <mesh geometry={nodes.Cylinder004.geometry} material={materials.trashbucket} />
+        <mesh geometry={nodes.Cylinder004_1.geometry} material={materials.wall} />
+      </group>
+      <group position={[0.068, 0.013, 0.006]} scale={0.056}>
+        <mesh geometry={nodes.Cube011.geometry} material={materials.wall} />
+        <mesh geometry={nodes.Cube011_1.geometry} material={materials.wall_black} />
+        <mesh geometry={nodes.Cube011_2.geometry} material={materials.woodside} />
+        <mesh geometry={nodes.Cube011_3.geometry} material={materials.led_emisison_pink} />
+        <mesh geometry={nodes.Cube011_4.geometry} material={materials.led_emission_blue} />
+      </group>
+      <mesh geometry={nodes.blinds.geometry} material={materials.blackplastic} position={[-1.061, 1.421, -0.069]} />
+      <group position={[-0.407, 0.268, -0.12]} rotation={[0, 1.203, 0]} scale={0.253}>
+        <mesh geometry={nodes.Cylinder015.geometry} material={materials.blackplastic} />
+        <mesh geometry={nodes.Cylinder015_1.geometry} material={materials.metallic} />
+      </group>
+      <group position={[-0.182, 0.877, -0.99]} rotation={[Math.PI / 2, 0, 0]} scale={0.038}>
+        <mesh geometry={nodes.Plane025.geometry} material={materials.whiteplastic} />
+        <mesh geometry={nodes.Plane025_1.geometry} material={materials.wall} />
+        <mesh geometry={nodes.Plane025_2.geometry} material={materials.emission_green} />
+      </group>
+      <mesh geometry={nodes.wires1.geometry} material={materials.blackplastic} position={[-0.194, 0.663, -0.993]} rotation={[0, 0, -Math.PI / 2]} scale={0.016} />
+      <group position={[0.631, 0.97, -0.67]} rotation={[0, -0.105, 0]} scale={1.524}>
+        <mesh geometry={nodes.Cube002.geometry} material={materials.metallicplastic} />
+        <mesh geometry={nodes.Cube002_1.geometry} material={materials.tvscreen} />
+        <mesh geometry={nodes.Cube002_2.geometry} material={materials.blackplastic} />
+        <mesh geometry={nodes.Cube002_3.geometry} material={materials.emission_red_lite} />
+      </group>
+      <group position={[0.446, 1.337, -0.719]} rotation={[0, -0.253, 0]} scale={0.06}>
+        <mesh geometry={nodes.Cube004.geometry} material={materials.blackplastic} />
+        <mesh geometry={nodes.Cube004_1.geometry} material={materials.metallicplastic} />
+      </group>
+      <mesh geometry={nodes.boxes.geometry} material={materials.cardbox} position={[0.825, 1.346, -0.809]} rotation={[0, 0.367, 0]} scale={0.09} />
+      <group position={[0.471, 0.444, -0.993]} rotation={[Math.PI / 2, 0, 0]} scale={0.007}>
+        <mesh geometry={nodes.Cylinder.geometry} material={materials.metallicplastic} />
+        <mesh geometry={nodes.Cylinder_1.geometry} material={materials.blackplastic} />
+        <mesh geometry={nodes.Cylinder_2.geometry} material={materials.wall} />
+      </group>
+      <group position={[-0.374, 0.014, 0.767]} scale={0.199}>
+        <mesh geometry={nodes.Cube007.geometry} material={materials.darkwood_bed} />
+        <mesh geometry={nodes.Cube007_1.geometry} material={materials.cardbox} />
+        <mesh geometry={nodes.Cube007_2.geometry} material={materials.metallic} />
+        <mesh geometry={nodes.Cube007_3.geometry} material={materials.pillow_blanket} />
+        <mesh geometry={nodes.Cube007_4.geometry} material={materials.pillow} />
+      </group>
+      <group position={[0.824, 0.454, -0.87]} rotation={[0, -0.111, 0]} scale={0.072}>
+        <mesh geometry={nodes.Cube014.geometry} material={materials.blackplastic} />
+        <mesh geometry={nodes.Cube014_1.geometry} material={materials.metallicplastic} />
+        <mesh geometry={nodes.Cube014_2.geometry} material={materials.black_wood} />
+      </group>
+      <group position={[0.52, 0.742, -0.587]} rotation={[0, -0.005, 0]} scale={0.229}>
+        <mesh geometry={nodes.Cube016.geometry} material={materials.blackplastic} />
+        <mesh geometry={nodes.Cube016_1.geometry} material={materials.black_wood} />
+      </group>
+      <mesh geometry={nodes.floor.geometry} material={materials.floor} position={[0.068, 0.013, 0.006]} scale={0.056} />
+    </group>
   );
 }
 
-useGLTF.preload("../models/testbedroom.glb");
+useGLTF.preload('../models/lowpolyroom1.glb')
