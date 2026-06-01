@@ -1,25 +1,212 @@
-.content {
-  width: 30px;
-  height: 20px;
-  background: #f0f0f0;
-  overflow-y: auto;
-  padding: 0;
-  border-style: solid;
-  border-radius: 3px;
-  border-color: white;
-  border-width: 5px; 
-
+:root {
+  /* Swap this one line to change the nav/intro display font. */
+  --nav-font: 'Bungee', system-ui, sans-serif;
+  --accent: #7c3aed;
+  --accent-light: #a78bfa;
 }
 
-.wrapper {
-  padding: 10px;
-  width: 60px;
-  height: 40px;
-  transform: scale(0.5);
-  transform-origin: top left;
-  border-style: solid;
-  border-radius: 3px;
-  border-color: white;
-  border-width: 5px; 
+* {
+  box-sizing: border-box;
+}
 
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #15131f;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+/* ---- Layout: nav (top ~15%) + canvas (rest) ------------------------------ */
+.app {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.canvas-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.canvas-wrap canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* ---- Nav bar ------------------------------------------------------------- */
+.navbar {
+  flex: 0 0 15vh;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 4vw;
+  background: linear-gradient(90deg, #1b1630, #2a1d4a);
+  border-bottom: 3px solid var(--accent);
+  z-index: 10;
+}
+
+.navbar-brand {
+  font-family: var(--nav-font);
+  font-size: clamp(1.4rem, 4vh, 2.6rem);
+  color: #fff;
+  letter-spacing: 2px;
+}
+
+.navbar-tabs {
+  display: flex;
+  gap: 1.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.navbar-tab {
+  font-family: var(--nav-font);
+  font-size: clamp(0.9rem, 2.4vh, 1.4rem);
+  color: var(--accent-light);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.4em 0.6em;
+  border-radius: 6px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.navbar-tab:hover,
+.navbar-tab.is-active {
+  color: #fff;
+  background: rgba(124, 58, 237, 0.25);
+}
+
+/* ---- Back button --------------------------------------------------------- */
+.back-btn {
+  position: absolute;
+  top: 1rem;
+  left: 1rem;
+  z-index: 5;
+  font-family: var(--nav-font);
+  font-size: 0.9rem;
+  color: #fff;
+  background: rgba(124, 58, 237, 0.85);
+  border: none;
+  border-radius: 8px;
+  padding: 0.6em 1em;
+  cursor: pointer;
+}
+.back-btn:hover {
+  background: var(--accent);
+}
+
+/* ---- Intro overlay ------------------------------------------------------- */
+.intro {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  will-change: transform;
+}
+
+.intro-title {
+  position: absolute;
+  top: 18%;
+  left: 0;
+  right: 0;
+  text-align: center;
+  padding: 0 1rem;
+  font-family: var(--nav-font);
+  font-size: clamp(1.6rem, 6vw, 4rem);
+  color: #fff;
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+  z-index: 1;
+}
+
+.intro-canvas {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+
+.intro-enter {
+  position: absolute;
+  bottom: 12%;
+  z-index: 3;
+  font-family: var(--nav-font);
+  font-size: 1.3rem;
+  color: var(--accent);
+  background: #fff;
+  border: none;
+  border-radius: 999px;
+  padding: 0.7em 2.4em;
+  cursor: pointer;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+  transition: transform 0.1s, opacity 0.2s;
+}
+.intro-enter:hover:not(:disabled) {
+  transform: translateY(-2px);
+}
+.intro-enter:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* ---- Monitor on-screen page (rendered via <Html transform>) -------------- */
+.monitor-screen {
+  width: 520px;
+  height: 320px;
+  overflow-y: auto;
+  background: #0d1117;
+  color: #e6edf3;
+  font-family: system-ui, sans-serif;
+  padding: 22px 26px;
+  border-radius: 4px;
+}
+
+.screen-page h1 {
+  margin: 0;
+  font-size: 28px;
+}
+.screen-header p {
+  margin: 2px 0 18px;
+  color: var(--accent-light);
+}
+.screen-page h2 {
+  font-size: 18px;
+  border-bottom: 1px solid #30363d;
+  padding-bottom: 6px;
+}
+.screen-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.screen-list li {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #21262d;
+  gap: 12px;
+}
+.screen-list span {
+  color: #8b949e;
+  white-space: nowrap;
+}
+.screen-footer {
+  margin-top: 18px;
+  color: #8b949e;
+  font-size: 13px;
+}
+.screen-loading {
+  color: #8b949e;
 }
