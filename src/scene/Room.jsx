@@ -49,18 +49,20 @@ export function Room(props) {
 
       {/* Lighting recreated from the Blender scene. The GLB export dropped the
           actual light data (Punctual Lights wasn't enabled on export), so these
-          reproduce it: a warm key plus the pink/blue fill lights. Positions are
-          taken from the exported `renderlight_*` node transforms; decay={0} makes
-          intensity distance-independent (the originals sit far outside the room),
-          so you can tune purely by `intensity`/`color`. Replaced automatically if
-          a lights-enabled GLB is ever loaded. */}
+          reproduce the two area lights that define the "rendered" look — there is
+          no key/fill beyond them in the .blend, just a near-black world ambient.
+          Colors and positions are taken straight from the `renderlight_*` objects
+          (linear RGB -> sRGB, Blender Z-up -> three Y-up). decay={0} makes
+          intensity distance-independent (the originals sit ~6x the room size
+          away). Pink reads slightly hotter than blue, matching the source
+          energies (1523 vs 1396 W). Replaced automatically if a lights-enabled
+          GLB is ever loaded. */}
       {lights.length === 0 && (
         <>
-          <directionalLight position={[3, 5, 4]} intensity={1.2} color="#fff4e6" />
-          {/* renderlight_pink */}
-          <pointLight position={[-1.088, 1.727, -13.114]} intensity={1.6} decay={0} color="#ff5ea8" />
-          {/* renderlight_blue */}
-          <pointLight position={[-13.088, 1.727, -1.114]} intensity={1.6} decay={0} color="#4aa3ff" />
+          {/* renderlight_pink (magenta, from -Z / desk wall) */}
+          <pointLight position={[-1.088, 1.727, -13.114]} intensity={3.2} decay={0} color="#F519FF" />
+          {/* renderlight_blue (azure, from -X / window wall) */}
+          <pointLight position={[-13.088, 1.727, -1.114]} intensity={2.9} decay={0} color="#009AFF" />
         </>
       )}
 
