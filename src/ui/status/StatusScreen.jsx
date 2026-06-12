@@ -7,9 +7,11 @@ import { useNowPlaying } from './useNowPlaying'
  * Monitor B: bento-grid status dashboard — now playing (Spotify), currently
  * reading, contact, and a live clock/status strip. Default export for React.lazy.
  */
-export default function StatusScreen() {
+export default function StatusScreen({ live = true }) {
   const active = useStore((s) => s.currentView === 'monitor2')
-  const now = useNowPlaying(active)
+  // Only the interactive overlay copy polls Spotify; the decorative in-world
+  // copy uses the static fallback (no duplicate requests).
+  const now = useNowPlaying(active && live)
   const { contact, reading, statusLine } = statusData
 
   return (

@@ -1,11 +1,11 @@
-import React, { Suspense, useMemo } from 'react'
-import { useGLTF, Html } from '@react-three/drei'
+import { useMemo, useRef } from 'react'
+import { useGLTF } from '@react-three/drei'
+import { useFrame, useThree } from '@react-three/fiber'
+import { Box3, Vector3 } from 'three'
 import { Interactive } from './Interactive'
 import { TvScreen } from './TvScreen'
 import { useStore } from '../state/useStore'
-
-const IdeScreen = React.lazy(() => import('../ui/ide/IdeScreen'))
-const StatusScreen = React.lazy(() => import('../ui/status/StatusScreen'))
+import { screenRect } from './screenRect'
 
 const MODEL_URL = '/models/lowpolyroom1.glb'
 
@@ -221,71 +221,64 @@ export function Room(props) {
       {/* floor (renderplane backdrop intentionally omitted) */}
       <mesh geometry={nodes.floor.geometry} material={materials.floor} position={[0.068, 0.013, 0.006]} scale={0.056} />
 
-      {/* The experiences "website" rendered onto monitor1's screen. */}
-      <MonitorScreen />
-
-      {/* The status dashboard rendered onto monitor2's screen. */}
-      <StatusMonitorScreen />
+      {/* The monitor "webpages" are NOT rendered in-world. They only exist while
+          a monitor is focused, as the flat, interactive <ScreenOverlay>. This
+          keeps unfocused screens cheap and leaves the monitor meshes freely
+          clickable. ScreenProjector just reports where each screen is on-screen. */}
+      <ScreenProjector />
     </group>
   )
 }
 
 /**
- * drei <Html transform> projects real DOM onto a plane in 3D space. Positioned/
- * rotated/scaled to sit on monitor1's screen face. Pointer events are enabled
- * only when the monitor view is active so the page isn't clickable from afar.
- *
- * The position/rotation/scale below are first-pass guesses — tune visually.
+ * Each frame, projects the active monitor's screen-face mesh (found by material
+ * name) through the camera and writes its bounding pixel rect to `screenRect`,
+ * which <ScreenOverlay> reads to glue the flat interactive panel onto the
+ * monitor — accurate even while the camera is still flying in.
  */
-function MonitorScreen() {
-  const active = useStore((s) => s.currentView === 'monitor1')
+const _box = new Box3()
+const _v = new Vector3()
+function ScreenProjector() {
+  const { camera, scene, gl } = useThree()
+  const cache = useRef({})
 
-  return (
-    <Html
-      transform
-      position={[-0.3222, 0.5, -0.837]}
-      rotation={[0, -0.007, 0]}
-      scale={0.03}
-      zIndexRange={[10, 0]}
-      style={{ pointerEvents: active ? 'auto' : 'none' }}
-    >
-      <div className="monitor-screen" data-active={active}>
-        <Suspense fallback={<div className="screen-loading">…</div>}>
-          <IdeScreen />
-        </Suspense>
-      </div>
-    </Html>
-  )
-}
+  useFrame(() => {
+    const view = useStore.getState().currentView
+    if (view !== 'monitor1' && view !== 'monitor2') return
 
-/**
- * Same pattern as MonitorScreen, but on monitor2 — which is rotated -0.182 rad
- * about Y, so the Html plane carries the same rotation to lie flat on the
- * screen. Position/scale tuned visually.
- */
-function StatusMonitorScreen() {
-  const active = useStore((s) => s.currentView === 'monitor2')
+    let mesh = cache.current[view]
+    if (!mesh || !mesh.parent) {
+      mesh = null
+      scene.traverse((o) => {
+        if (o.isMesh && o.material && o.material.name === view) mesh = o
+      })
+      cache.current[view] = mesh
+    }
+    if (!mesh) return
 
-  return (
-    <Html
-      transform
-      // Screen-face world center [0.042, 0.630, -0.812] (derived from the GLB),
-      // nudged forward along the screen normal [-0.181, 0, 0.983].
-      position={[0.0416, 0.483, -0.807]}
-      rotation={[0, -0.182, 0]}
-      // The face is square, 0.234 world units; drei transform maps
-      // world = px * scale / 40, so 380px * 0.0246 / 40 ≈ 0.234.
-      scale={0.0246}
-      zIndexRange={[10, 0]}
-      style={{ pointerEvents: active ? 'auto' : 'none' }}
-    >
-      <div className="status-screen" data-active={active}>
-        <Suspense fallback={<div className="screen-loading">…</div>}>
-          <StatusScreen />
-        </Suspense>
-      </div>
-    </Html>
-  )
+    _box.setFromObject(mesh)
+    const { min, max } = _box
+    const cr = gl.domElement.getBoundingClientRect()
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+    for (let i = 0; i < 8; i++) {
+      _v.set(i & 1 ? max.x : min.x, i & 2 ? max.y : min.y, i & 4 ? max.z : min.z)
+      _v.project(camera)
+      const sx = (_v.x * 0.5 + 0.5) * cr.width
+      const sy = (-_v.y * 0.5 + 0.5) * cr.height
+      if (sx < minX) minX = sx
+      if (sy < minY) minY = sy
+      if (sx > maxX) maxX = sx
+      if (sy > maxY) maxY = sy
+    }
+    screenRect[view] = {
+      left: cr.left + minX,
+      top: cr.top + minY,
+      width: maxX - minX,
+      height: maxY - minY,
+    }
+  })
+
+  return null
 }
 
 useGLTF.preload(MODEL_URL)

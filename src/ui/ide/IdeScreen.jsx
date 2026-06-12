@@ -18,12 +18,15 @@ const BOOT_LINES = [
  * commented code; the terminal "runs" the active file and prints its one-line
  * summary. Default export for React.lazy.
  */
-export default function IdeScreen() {
+export default function IdeScreen({ interactive = true }) {
   const active = useStore((s) => s.currentView === 'monitor1')
   const booted = useStore((s) => s.ideBooted)
+  // The boot sequence only plays in the interactive overlay instance; the
+  // decorative in-world copy just shows the editor.
+  const showBoot = interactive && active && !booted
   return (
     <div className="ide">
-      {!booted && active ? <BootSequence /> : <Ide />}
+      {showBoot ? <BootSequence /> : <Ide />}
     </div>
   )
 }

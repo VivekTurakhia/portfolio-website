@@ -8,6 +8,7 @@ import { NavBar } from './ui/NavBar.jsx'
 import { Intro } from './ui/Intro.jsx'
 import { BackButton } from './ui/BackButton.jsx'
 import { TvOverlay } from './ui/TvOverlay.jsx'
+import { ScreenOverlay } from './ui/ScreenOverlay.jsx'
 import { AudioController } from './ui/AudioController.jsx'
 import { useStore } from './state/useStore.js'
 
@@ -62,6 +63,7 @@ export default function App() {
           </Selection>
         </Canvas>
 
+        <ScreenOverlay />
         <BackButton />
         <TvOverlay />
       </div>

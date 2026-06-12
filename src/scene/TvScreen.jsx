@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { useThree } from '@react-three/fiber'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { useStore } from '../state/useStore'
 import { movieClips } from '../data/movieClips'
@@ -7,25 +7,25 @@ import { movieClips } from '../data/movieClips'
 const VIDEO_ASPECT = 16 / 9
 
 /**
- * The TV's screen face. Before the TV is first activated it renders the
- * original dark `tvscreen` material from the GLB; afterwards it becomes a live
+ * The TV's screen face. Before the TV is first activated it renders the original
+ * dark `tvscreen` material from the GLB; once activated it becomes a live
  * VideoTexture playing the favourite-films cycle. The <video> element is created
- * only on activation, so none of the (large) clip files are fetched until
- * someone actually clicks the TV.
+ * only on activation, so the (large) clip files aren't fetched until someone
+ * actually clicks the TV — and once on, the TV stays on (no power-off).
  *
- * The GLB face has no authored UVs worth trusting (its material was a flat
- * emissive color), so we generate planar UVs from the geometry's own bounding
- * box and then scale them so the 16:9 video *covers* the face (CSS
- * object-fit: cover) instead of stretching.
+ * Power-on: the screen opens from a centre line, expanding up + down (the mesh's
+ * scale.y springs 0 → 1). The geometry is recentred at its bounding-box centre so
+ * that vertical scaling pivots about the middle of the screen.
+ *
+ * The GLB face has no usable UVs, so we also generate planar UVs scaled so the
+ * 16:9 video *covers* the face (like CSS object-fit: cover).
  */
 export function TvScreen({ geometry, fallbackMaterial }) {
   const tvOn = useStore((s) => s.tvOn)
   const tvClipIndex = useStore((s) => s.tvClipIndex)
-  const three = useThree()
-  if (import.meta.env.DEV) window.__three = three
 
-  // Planar-UV'd copy of the screen geometry (computed once).
-  const screenGeometry = useMemo(() => {
+  // Planar-UV'd, centre-pivoted copy of the screen geometry (computed once).
+  const { screenGeometry, center } = useMemo(() => {
     const g = geometry.clone()
     g.computeBoundingBox()
     const bb = g.boundingBox
@@ -53,14 +53,20 @@ export function TvScreen({ geometry, fallbackMaterial }) {
     for (let i = 0; i < pos.count; i++) {
       const p = { x: pos.getX(i), y: pos.getY(i), z: pos.getZ(i) }
       const u = (p[uAxis] - bb.min[uAxis]) / size[uAxis]
-      // Invert V: with flipY=false the image's top row sits at v=0, and our
-      // v=0 is the screen's bottom edge — without this the picture is upside down.
+      // Invert V: with flipY=false the image's top row sits at v=0, and our v=0
+      // is the screen's bottom edge — without this the picture is upside down.
       const v = 1 - (p[vAxis] - bb.min[vAxis]) / size[vAxis]
       uv[i * 2] = (u - 0.5) / uScale + 0.5
       uv[i * 2 + 1] = (v - 0.5) / vScale + 0.5
     }
     g.setAttribute('uv', new THREE.BufferAttribute(uv, 2))
-    return g
+
+    // Recentre at the bbox centre so the mesh can be re-placed there and scaled
+    // about the screen's middle.
+    const c = new THREE.Vector3()
+    bb.getCenter(c)
+    g.translate(-c.x, -c.y, -c.z)
+    return { screenGeometry: g, center: [c.x, c.y, c.z] }
   }, [geometry])
 
   // One <video> element for the TV's lifetime, created on first activation.
@@ -70,7 +76,6 @@ export function TvScreen({ geometry, fallbackMaterial }) {
     v.playsInline = true
     v.preload = 'auto'
     v.crossOrigin = 'anonymous'
-    if (import.meta.env.DEV) window.__tvVideo = v
     return v
   }, [tvOn])
 
@@ -78,26 +83,27 @@ export function TvScreen({ geometry, fallbackMaterial }) {
     if (!video) return null
     const t = new THREE.VideoTexture(video)
     t.colorSpace = THREE.SRGBColorSpace
-    // glTF-convention geometry: V runs top-down, so don't flip.
-    t.flipY = false
+    t.flipY = false // glTF-convention geometry: V runs top-down.
     t.wrapS = THREE.ClampToEdgeWrapping
     t.wrapT = THREE.ClampToEdgeWrapping
     return t
   }, [video])
 
-  // Built imperatively and passed via the `material` prop: swapping a mesh from
-  // a `material` prop (fallback branch) to a JSX child <meshBasicMaterial> hits
-  // an R3F reconciliation edge case where the child's props never get applied
-  // (observed: default white, no map). A concrete material avoids it entirely.
+  // Built imperatively and passed via the `material` prop: swapping a mesh from a
+  // `material` prop to a JSX child <meshBasicMaterial> hits an R3F reconciliation
+  // edge case where the child's props never apply. A concrete material avoids it.
   const videoMaterial = useMemo(() => {
     if (!texture) return null
     return new THREE.MeshBasicMaterial({ map: texture, toneMapped: false })
   }, [texture])
 
-  // Swap to the video material only once the first frame is decodable —
-  // otherwise the screen flashes white/garbage while the file streams in.
+  // `opened` latches true once the first frame is decodable, kicking off the
+  // power-on. It never resets, so swapping clips later doesn't re-animate.
   const [ready, setReady] = useState(false)
-  if (import.meta.env.DEV) window.__tvReady = ready
+  const [opened, setOpened] = useState(false)
+  useEffect(() => {
+    if (ready) setOpened(true)
+  }, [ready])
 
   // Drive the playlist: load + play current clip; advance the cycle when it ends.
   useEffect(() => {
@@ -105,10 +111,8 @@ export function TvScreen({ geometry, fallbackMaterial }) {
     setReady(false)
     video.src = movieClips[tvClipIndex].src
     video.play().catch(() => {
-      // Autoplay-with-sound is blocked without a fresh user gesture (e.g. view
-      // entered via keyboard, or the gesture's activation window expired).
-      // Fall back to muted playback, then restore sound on the next real
-      // interaction anywhere on the page.
+      // Autoplay-with-sound can be blocked without a fresh user gesture; fall
+      // back to muted, then unmute on the next interaction anywhere.
       video.muted = true
       video.play().catch(() => {})
       const unmute = () => {
@@ -143,8 +147,25 @@ export function TvScreen({ geometry, fallbackMaterial }) {
     return () => videoMaterial.dispose()
   }, [videoMaterial])
 
-  if (!tvOn || !videoMaterial || !ready) {
+  // Start collapsed; spring scale.y toward the open target each frame.
+  const meshRef = useRef(null)
+  const attachMesh = useCallback((m) => {
+    meshRef.current = m
+    if (m) m.scale.y = 0
+  }, [])
+  useFrame((_, dt) => {
+    const m = meshRef.current
+    if (!m) return
+    const target = opened ? 1 : 0
+    m.scale.y = THREE.MathUtils.damp(m.scale.y, target, 9, dt)
+    if (Math.abs(m.scale.y - target) < 0.001) m.scale.y = target
+  })
+
+  // Before activation, the plain dark screen (and it never re-fetches the clips).
+  if (!tvOn || !videoMaterial) {
     return <mesh geometry={geometry} material={fallbackMaterial} />
   }
-  return <mesh geometry={screenGeometry} material={videoMaterial} />
+  // Video mesh mounts immediately on activation but stays collapsed (scale.y 0,
+  // hiding the pre-decode flash) until `opened` springs it up + down.
+  return <mesh ref={attachMesh} geometry={screenGeometry} position={center} material={videoMaterial} />
 }

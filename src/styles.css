@@ -87,11 +87,13 @@ body,
 }
 
 /* ---- Back button --------------------------------------------------------- */
+/* Bottom-left so it never overlaps the centered monitor panel / its file tree;
+   z above the screen overlay so exiting always works. */
 .back-btn {
   position: absolute;
-  top: 1rem;
-  left: 1rem;
-  z-index: 5;
+  bottom: 1.25rem;
+  left: 1.25rem;
+  z-index: 7;
   font-family: var(--nav-font);
   font-size: 0.9rem;
   color: #fff;
@@ -103,6 +105,66 @@ body,
 }
 .back-btn:hover {
   background: var(--accent);
+}
+
+/* ---- Interactive screen overlay (flat, projected onto the monitor) -------- */
+.screen-overlay {
+  position: fixed;
+  z-index: 6;
+  overflow: hidden;
+  pointer-events: auto;
+}
+.screen-overlay-inner {
+  transform-origin: top left;
+}
+
+/* CRT power on/off: opens from a bright center line, expanding up + down.
+   Applied to an inner wrapper so it composes with the projection scale above. */
+.crt {
+  width: 100%;
+  height: 100%;
+  transform-origin: center center;
+  will-change: transform, filter, opacity;
+}
+.crt-on {
+  animation: crt-on 0.45s cubic-bezier(0.16, 0.84, 0.3, 1) both;
+}
+.crt-off {
+  animation: crt-off 0.32s ease-in both;
+}
+@keyframes crt-on {
+  0% {
+    transform: scaleY(0);
+    opacity: 0.35;
+    filter: brightness(2.6) saturate(1.4);
+  }
+  9% {
+    transform: scaleY(0.016);
+    opacity: 1;
+    filter: brightness(2.6) saturate(1.4);
+  }
+  100% {
+    transform: scaleY(1);
+    opacity: 1;
+    filter: brightness(1) saturate(1);
+  }
+}
+@keyframes crt-off {
+  0% {
+    transform: scaleY(1);
+    opacity: 1;
+    filter: brightness(1);
+  }
+  70% {
+    transform: scaleY(0.02);
+    opacity: 1;
+    filter: brightness(2.2);
+  }
+  100% {
+    transform: scaleY(0);
+    opacity: 0;
+    filter: brightness(2.2);
+  }
 }
 
 /* ---- Intro overlay ------------------------------------------------------- */

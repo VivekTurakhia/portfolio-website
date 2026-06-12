@@ -32,7 +32,7 @@ export const views = {
   // tv at [0.631, 0.97, -0.67], rotated -0.105 rad about Y; normal ≈ [0.105, 0, 0.994].
   // Pulled back further than the monitors — it's a bigger screen.
   tv: {
-    position: [0.734, 0.97, 0.31],
+    position: [0.734, 0.97, 0.001],
     target: [0.631, 0.97, -0.67],
   },
 }
