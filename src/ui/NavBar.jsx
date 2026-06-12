@@ -10,6 +10,16 @@ export function NavBar() {
 
   const tabs = [
     { id: 'about', label: 'About Me', view: 'monitor1', onClick: () => setView('monitor1') },
+    { id: 'status', label: 'Status', view: 'monitor2', onClick: () => setView('monitor2') },
+    {
+      id: 'films',
+      label: 'Films',
+      view: 'tv',
+      onClick: () => {
+        useStore.getState().tvActivate()
+        setView('tv')
+      },
+    },
   ]
 
   return (

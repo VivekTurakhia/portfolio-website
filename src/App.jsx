@@ -7,6 +7,7 @@ import { CameraRig } from './scene/CameraRig.jsx'
 import { NavBar } from './ui/NavBar.jsx'
 import { Intro } from './ui/Intro.jsx'
 import { BackButton } from './ui/BackButton.jsx'
+import { TvOverlay } from './ui/TvOverlay.jsx'
 import { AudioController } from './ui/AudioController.jsx'
 import { useStore } from './state/useStore.js'
 
@@ -55,13 +56,14 @@ export default function App() {
             <Suspense fallback={null}>
               <Room />
               {/* Position is a sensible default — fine-tune to seat the avatar at the desk. */}
-              <Avatar animation="Typing" position={[-0.38, 0.0, 0.02]} />
+              <Avatar animation="Typing" position={[-0.4, 0.3, -0.1]} />
               <SceneReadySignal />
             </Suspense>
           </Selection>
         </Canvas>
 
         <BackButton />
+        <TvOverlay />
       </div>
 
       <Intro />

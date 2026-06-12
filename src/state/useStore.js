@@ -6,6 +6,7 @@ import { create } from 'zustand'
  * without triggering React re-renders.
  */
 export const useStore = create((set, get) => ({
+  // (state shape below; dev console access via window.__store at file bottom)
   // ---- Camera view ----------------------------------------------------------
   // Which named preset (see scene/views.js) the camera is animating toward.
   currentView: 'room',
@@ -26,6 +27,20 @@ export const useStore = create((set, get) => ({
     set({ introDone: true })
     get().playMusic()
   },
+
+  // ---- TV clip player --------------------------------------------------------
+  // tvOn flips true on the first TV activation so the <video> elements are only
+  // created (and bytes fetched) once someone actually looks at the TV.
+  tvOn: false,
+  tvClipIndex: 0,
+  tvActivate: () => set({ tvOn: true }),
+  tvAdvance: (count) =>
+    set((s) => ({ tvClipIndex: (s.tvClipIndex + 1) % count })),
+
+  // ---- Monitor A (IDE) -------------------------------------------------------
+  // Boot plays in full only the first time the monitor1 view is entered.
+  ideBooted: false,
+  setIdeBooted: () => set({ ideBooted: true }),
 
   // ---- Audio ----------------------------------------------------------------
   isMusicPlaying: false,
@@ -49,3 +64,6 @@ export const useStore = create((set, get) => ({
     }
   },
 }))
+
+// Dev-only: poke at state from the browser console (window.__store.getState()).
+if (import.meta.env.DEV) window.__store = useStore

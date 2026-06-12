@@ -1,9 +1,11 @@
 import React, { Suspense, useMemo } from 'react'
 import { useGLTF, Html } from '@react-three/drei'
 import { Interactive } from './Interactive'
+import { TvScreen } from './TvScreen'
 import { useStore } from '../state/useStore'
 
-const ExperiencesScreen = React.lazy(() => import('../ui/ExperiencesScreen'))
+const IdeScreen = React.lazy(() => import('../ui/ide/IdeScreen'))
+const StatusScreen = React.lazy(() => import('../ui/status/StatusScreen'))
 
 const MODEL_URL = '/models/lowpolyroom1.glb'
 
@@ -81,13 +83,15 @@ export function Room(props) {
         </group>
       </Interactive>
 
-      {/* monitor2 (static for now) */}
-      <group position={[0.078, 0.501, -0.82]} rotation={[0, -0.182, 0]}>
-        <mesh geometry={nodes.Plane002.geometry} material={materials.blackplastic} />
-        <mesh geometry={nodes.Plane002_1.geometry} material={materials.metallicplastic} />
-        <mesh geometry={nodes.Plane002_2.geometry} material={materials.emission_blue} />
-        <mesh geometry={nodes.Plane002_3.geometry} material={materials.monitor2} />
-      </group>
+      {/* monitor2 — interactive: zooms to the status dashboard */}
+      <Interactive id="monitor2">
+        <group position={[0.078, 0.501, -0.82]} rotation={[0, -0.182, 0]}>
+          <mesh geometry={nodes.Plane002.geometry} material={materials.blackplastic} />
+          <mesh geometry={nodes.Plane002_1.geometry} material={materials.metallicplastic} />
+          <mesh geometry={nodes.Plane002_2.geometry} material={materials.emission_blue} />
+          <mesh geometry={nodes.Plane002_3.geometry} material={materials.monitor2} />
+        </group>
+      </Interactive>
 
       {/* pc tower */}
       <group position={[-0.732, 0.626, -0.841]} rotation={[0, -0.01, 0]} scale={0.108}>
@@ -165,13 +169,15 @@ export function Room(props) {
 
       <mesh geometry={nodes.wires1.geometry} material={materials.blackplastic} position={[-0.194, 0.663, -0.993]} rotation={[0, 0, -Math.PI / 2]} scale={0.016} />
 
-      {/* tv (static for now) */}
-      <group position={[0.631, 0.97, -0.67]} rotation={[0, -0.105, 0]} scale={1.524}>
-        <mesh geometry={nodes.Cube002.geometry} material={materials.metallicplastic} />
-        <mesh geometry={nodes.Cube002_1.geometry} material={materials.tvscreen} />
-        <mesh geometry={nodes.Cube002_2.geometry} material={materials.blackplastic} />
-        <mesh geometry={nodes.Cube002_3.geometry} material={materials.emission_red_lite} />
-      </group>
+      {/* tv — interactive: zooms in and plays the favourite-films cycle */}
+      <Interactive id="tv">
+        <group position={[0.631, 0.97, -0.67]} rotation={[0, -0.105, 0]} scale={1.524}>
+          <mesh geometry={nodes.Cube002.geometry} material={materials.metallicplastic} />
+          <TvScreen geometry={nodes.Cube002_1.geometry} fallbackMaterial={materials.tvscreen} />
+          <mesh geometry={nodes.Cube002_2.geometry} material={materials.blackplastic} />
+          <mesh geometry={nodes.Cube002_3.geometry} material={materials.emission_red_lite} />
+        </group>
+      </Interactive>
 
       {/* speakers2 — interactive: toggle music */}
       <Interactive id="speakers2">
@@ -217,6 +223,9 @@ export function Room(props) {
 
       {/* The experiences "website" rendered onto monitor1's screen. */}
       <MonitorScreen />
+
+      {/* The status dashboard rendered onto monitor2's screen. */}
+      <StatusMonitorScreen />
     </group>
   )
 }
@@ -234,15 +243,45 @@ function MonitorScreen() {
   return (
     <Html
       transform
-      position={[-0.321, 0.52, -0.78]}
+      position={[-0.3222, 0.5, -0.837]}
       rotation={[0, -0.007, 0]}
-      scale={0.07}
+      scale={0.03}
       zIndexRange={[10, 0]}
       style={{ pointerEvents: active ? 'auto' : 'none' }}
     >
       <div className="monitor-screen" data-active={active}>
         <Suspense fallback={<div className="screen-loading">…</div>}>
-          <ExperiencesScreen />
+          <IdeScreen />
+        </Suspense>
+      </div>
+    </Html>
+  )
+}
+
+/**
+ * Same pattern as MonitorScreen, but on monitor2 — which is rotated -0.182 rad
+ * about Y, so the Html plane carries the same rotation to lie flat on the
+ * screen. Position/scale tuned visually.
+ */
+function StatusMonitorScreen() {
+  const active = useStore((s) => s.currentView === 'monitor2')
+
+  return (
+    <Html
+      transform
+      // Screen-face world center [0.042, 0.630, -0.812] (derived from the GLB),
+      // nudged forward along the screen normal [-0.181, 0, 0.983].
+      position={[0.0416, 0.483, -0.807]}
+      rotation={[0, -0.182, 0]}
+      // The face is square, 0.234 world units; drei transform maps
+      // world = px * scale / 40, so 380px * 0.0246 / 40 ≈ 0.234.
+      scale={0.0246}
+      zIndexRange={[10, 0]}
+      style={{ pointerEvents: active ? 'auto' : 'none' }}
+    >
+      <div className="status-screen" data-active={active}>
+        <Suspense fallback={<div className="screen-loading">…</div>}>
+          <StatusScreen />
         </Suspense>
       </div>
     </Html>
