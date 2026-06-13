@@ -7,6 +7,8 @@ import { CameraRig } from './scene/CameraRig.jsx'
 import { NavBar } from './ui/NavBar.jsx'
 import { Intro } from './ui/Intro.jsx'
 import { BackButton } from './ui/BackButton.jsx'
+import { TvOverlay } from './ui/TvOverlay.jsx'
+import { ScreenOverlay } from './ui/ScreenOverlay.jsx'
 import { AudioController } from './ui/AudioController.jsx'
 import { useStore } from './state/useStore.js'
 
@@ -32,12 +34,11 @@ export default function App() {
         <Canvas dpr={[1, 2]} gl={{ antialias: true }}>
           <color attach="background" args={['#15131f']} />
 
-          {/* World/ambient stand-in. glTF can't carry Blender's world ambient,
-              so this soft sky/ground fill always stays here. The key/accent
-              lights live in Room.jsx — either the Blender-exported punctual
-              lights, or a fallback rig when the GLB has none. */}
-          <hemisphereLight args={['#aab6ff', '#1a1208', 0.7]} />
-          <ambientLight intensity={0.2} />
+          {/* Stand-in for Blender's world ambient: a near-black neutral fill
+              (the .blend world is grey ~0.05), just enough that surfaces facing
+              away from both area lights aren't pure black. The two colored area
+              lights that define the look live in Room.jsx. */}
+          <ambientLight intensity={0.18} color="#2a2730" />
 
           <CameraRig />
 
@@ -56,13 +57,15 @@ export default function App() {
             <Suspense fallback={null}>
               <Room />
               {/* Position is a sensible default — fine-tune to seat the avatar at the desk. */}
-              <Avatar animation="Typing" position={[-0.38, 0.0, 0.02]} />
+              <Avatar animation="Typing" position={[-0.4, 0.3, -0.1]} />
               <SceneReadySignal />
             </Suspense>
           </Selection>
         </Canvas>
 
+        <ScreenOverlay />
         <BackButton />
+        <TvOverlay />
       </div>
 
       <Intro />

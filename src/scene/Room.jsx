@@ -1,9 +1,11 @@
-import React, { Suspense, useMemo } from 'react'
-import { useGLTF, Html } from '@react-three/drei'
+import { useMemo, useRef } from 'react'
+import { useGLTF } from '@react-three/drei'
+import { useFrame, useThree } from '@react-three/fiber'
+import { Box3, Vector3 } from 'three'
 import { Interactive } from './Interactive'
+import { TvScreen } from './TvScreen'
 import { useStore } from '../state/useStore'
-
-const ExperiencesScreen = React.lazy(() => import('../ui/ExperiencesScreen'))
+import { screenRect } from './screenRect'
 
 const MODEL_URL = '/models/lowpolyroom1.glb'
 
@@ -49,18 +51,20 @@ export function Room(props) {
 
       {/* Lighting recreated from the Blender scene. The GLB export dropped the
           actual light data (Punctual Lights wasn't enabled on export), so these
-          reproduce it: a warm key plus the pink/blue fill lights. Positions are
-          taken from the exported `renderlight_*` node transforms; decay={0} makes
-          intensity distance-independent (the originals sit far outside the room),
-          so you can tune purely by `intensity`/`color`. Replaced automatically if
-          a lights-enabled GLB is ever loaded. */}
+          reproduce the two area lights that define the "rendered" look — there is
+          no key/fill beyond them in the .blend, just a near-black world ambient.
+          Colors and positions are taken straight from the `renderlight_*` objects
+          (linear RGB -> sRGB, Blender Z-up -> three Y-up). decay={0} makes
+          intensity distance-independent (the originals sit ~6x the room size
+          away). Pink reads slightly hotter than blue, matching the source
+          energies (1523 vs 1396 W). Replaced automatically if a lights-enabled
+          GLB is ever loaded. */}
       {lights.length === 0 && (
         <>
-          <directionalLight position={[3, 5, 4]} intensity={1.2} color="#fff4e6" />
-          {/* renderlight_pink */}
-          <pointLight position={[-1.088, 1.727, -13.114]} intensity={1.6} decay={0} color="#ff5ea8" />
-          {/* renderlight_blue */}
-          <pointLight position={[-13.088, 1.727, -1.114]} intensity={1.6} decay={0} color="#4aa3ff" />
+          {/* renderlight_pink (magenta, from -Z / desk wall) */}
+          <pointLight position={[-1.088, 1.727, -13.114]} intensity={3.2} decay={0} color="#F519FF" />
+          {/* renderlight_blue (azure, from -X / window wall) */}
+          <pointLight position={[-13.088, 1.727, -1.114]} intensity={2.9} decay={0} color="#009AFF" />
         </>
       )}
 
@@ -79,13 +83,15 @@ export function Room(props) {
         </group>
       </Interactive>
 
-      {/* monitor2 (static for now) */}
-      <group position={[0.078, 0.501, -0.82]} rotation={[0, -0.182, 0]}>
-        <mesh geometry={nodes.Plane002.geometry} material={materials.blackplastic} />
-        <mesh geometry={nodes.Plane002_1.geometry} material={materials.metallicplastic} />
-        <mesh geometry={nodes.Plane002_2.geometry} material={materials.emission_blue} />
-        <mesh geometry={nodes.Plane002_3.geometry} material={materials.monitor2} />
-      </group>
+      {/* monitor2 — interactive: zooms to the status dashboard */}
+      <Interactive id="monitor2">
+        <group position={[0.078, 0.501, -0.82]} rotation={[0, -0.182, 0]}>
+          <mesh geometry={nodes.Plane002.geometry} material={materials.blackplastic} />
+          <mesh geometry={nodes.Plane002_1.geometry} material={materials.metallicplastic} />
+          <mesh geometry={nodes.Plane002_2.geometry} material={materials.emission_blue} />
+          <mesh geometry={nodes.Plane002_3.geometry} material={materials.monitor2} />
+        </group>
+      </Interactive>
 
       {/* pc tower */}
       <group position={[-0.732, 0.626, -0.841]} rotation={[0, -0.01, 0]} scale={0.108}>
@@ -163,13 +169,15 @@ export function Room(props) {
 
       <mesh geometry={nodes.wires1.geometry} material={materials.blackplastic} position={[-0.194, 0.663, -0.993]} rotation={[0, 0, -Math.PI / 2]} scale={0.016} />
 
-      {/* tv (static for now) */}
-      <group position={[0.631, 0.97, -0.67]} rotation={[0, -0.105, 0]} scale={1.524}>
-        <mesh geometry={nodes.Cube002.geometry} material={materials.metallicplastic} />
-        <mesh geometry={nodes.Cube002_1.geometry} material={materials.tvscreen} />
-        <mesh geometry={nodes.Cube002_2.geometry} material={materials.blackplastic} />
-        <mesh geometry={nodes.Cube002_3.geometry} material={materials.emission_red_lite} />
-      </group>
+      {/* tv — interactive: zooms in and plays the favourite-films cycle */}
+      <Interactive id="tv">
+        <group position={[0.631, 0.97, -0.67]} rotation={[0, -0.105, 0]} scale={1.524}>
+          <mesh geometry={nodes.Cube002.geometry} material={materials.metallicplastic} />
+          <TvScreen geometry={nodes.Cube002_1.geometry} fallbackMaterial={materials.tvscreen} />
+          <mesh geometry={nodes.Cube002_2.geometry} material={materials.blackplastic} />
+          <mesh geometry={nodes.Cube002_3.geometry} material={materials.emission_red_lite} />
+        </group>
+      </Interactive>
 
       {/* speakers2 — interactive: toggle music */}
       <Interactive id="speakers2">
@@ -213,38 +221,64 @@ export function Room(props) {
       {/* floor (renderplane backdrop intentionally omitted) */}
       <mesh geometry={nodes.floor.geometry} material={materials.floor} position={[0.068, 0.013, 0.006]} scale={0.056} />
 
-      {/* The experiences "website" rendered onto monitor1's screen. */}
-      <MonitorScreen />
+      {/* The monitor "webpages" are NOT rendered in-world. They only exist while
+          a monitor is focused, as the flat, interactive <ScreenOverlay>. This
+          keeps unfocused screens cheap and leaves the monitor meshes freely
+          clickable. ScreenProjector just reports where each screen is on-screen. */}
+      <ScreenProjector />
     </group>
   )
 }
 
 /**
- * drei <Html transform> projects real DOM onto a plane in 3D space. Positioned/
- * rotated/scaled to sit on monitor1's screen face. Pointer events are enabled
- * only when the monitor view is active so the page isn't clickable from afar.
- *
- * The position/rotation/scale below are first-pass guesses — tune visually.
+ * Each frame, projects the active monitor's screen-face mesh (found by material
+ * name) through the camera and writes its bounding pixel rect to `screenRect`,
+ * which <ScreenOverlay> reads to glue the flat interactive panel onto the
+ * monitor — accurate even while the camera is still flying in.
  */
-function MonitorScreen() {
-  const active = useStore((s) => s.currentView === 'monitor1')
+const _box = new Box3()
+const _v = new Vector3()
+function ScreenProjector() {
+  const { camera, scene, gl } = useThree()
+  const cache = useRef({})
 
-  return (
-    <Html
-      transform
-      position={[-0.321, 0.52, -0.78]}
-      rotation={[0, -0.007, 0]}
-      scale={0.07}
-      zIndexRange={[10, 0]}
-      style={{ pointerEvents: active ? 'auto' : 'none' }}
-    >
-      <div className="monitor-screen" data-active={active}>
-        <Suspense fallback={<div className="screen-loading">…</div>}>
-          <ExperiencesScreen />
-        </Suspense>
-      </div>
-    </Html>
-  )
+  useFrame(() => {
+    const view = useStore.getState().currentView
+    if (view !== 'monitor1' && view !== 'monitor2') return
+
+    let mesh = cache.current[view]
+    if (!mesh || !mesh.parent) {
+      mesh = null
+      scene.traverse((o) => {
+        if (o.isMesh && o.material && o.material.name === view) mesh = o
+      })
+      cache.current[view] = mesh
+    }
+    if (!mesh) return
+
+    _box.setFromObject(mesh)
+    const { min, max } = _box
+    const cr = gl.domElement.getBoundingClientRect()
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+    for (let i = 0; i < 8; i++) {
+      _v.set(i & 1 ? max.x : min.x, i & 2 ? max.y : min.y, i & 4 ? max.z : min.z)
+      _v.project(camera)
+      const sx = (_v.x * 0.5 + 0.5) * cr.width
+      const sy = (-_v.y * 0.5 + 0.5) * cr.height
+      if (sx < minX) minX = sx
+      if (sy < minY) minY = sy
+      if (sx > maxX) maxX = sx
+      if (sy > maxY) maxY = sy
+    }
+    screenRect[view] = {
+      left: cr.left + minX,
+      top: cr.top + minY,
+      width: maxX - minX,
+      height: maxY - minY,
+    }
+  })
+
+  return null
 }
 
 useGLTF.preload(MODEL_URL)

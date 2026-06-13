@@ -8,6 +8,8 @@
  *
  * `label` is currently used for hover affordance / future tooltips.
  */
+import { movieClips } from '../data/movieClips'
+
 export const interactables = {
   monitor1: {
     label: 'Experience',
@@ -21,9 +23,24 @@ export const interactables = {
     label: 'Music',
     onSelect: (store) => store.toggleMusic(),
   },
+  monitor2: {
+    label: 'Status',
+    onSelect: (store) => store.setView('monitor2'),
+  },
+  tv: {
+    label: 'Films',
+    // First click zooms in (and powers the TV on); clicking the TV while
+    // already watching advances to the next clip in the cycle.
+    onSelect: (store) => {
+      if (store.currentView !== 'tv') {
+        store.tvActivate()
+        store.setView('tv')
+      } else {
+        store.tvAdvance(movieClips.length)
+      }
+    },
+  },
 
   // ---- Examples for later (uncomment + wrap in Room.jsx to enable) ----------
-  // monitor2: { label: 'Projects', onSelect: (store) => store.setView('monitor2') },
-  // bed:      { label: 'About',    onSelect: (store) => store.setView('bed') },
-  // tv:       { label: 'Reel',     onSelect: (store) => store.setView('tv') },
+  // bed: { label: 'About', onSelect: (store) => store.setView('bed') },
 }
