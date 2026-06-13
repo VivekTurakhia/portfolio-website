@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useRef, useState } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import { useStore } from '../state/useStore'
 import { screenRect } from '../scene/screenRect'
 
@@ -46,32 +46,24 @@ function useProjectedRect(view) {
 
 export function ScreenOverlay() {
   const view = useStore((s) => s.currentView)
-  const focused = VIEWS[view] ? view : null
+  const cameraSettled = useStore((s) => s.cameraSettled)
+  const exiting = useStore((s) => s.exiting)
 
-  // `shown` is the view whose page is mounted — it lingers (with `closing` true)
-  // after focus leaves so the power-off animation can play before unmounting.
-  const [shown, setShown] = useState(null)
-  const [closing, setClosing] = useState(false)
-  const timer = useRef(null)
+  const cfg = VIEWS[view]
+  // Power on only after the camera has arrived (cameraSettled). While `exiting`,
+  // the page stays mounted and plays its power-off before the camera leaves.
+  const show = !!cfg && (cameraSettled || exiting)
+  const closing = exiting
 
+  // Once the power-off has had time to finish, tell the store to move the camera.
   useEffect(() => {
-    clearTimeout(timer.current)
-    if (focused) {
-      setShown(focused)
-      setClosing(false)
-    } else if (shown) {
-      setClosing(true)
-      timer.current = setTimeout(() => {
-        setShown(null)
-        setClosing(false)
-      }, OFF_MS)
-    }
-    return () => clearTimeout(timer.current)
-  }, [focused]) // eslint-disable-line react-hooks/exhaustive-deps
+    if (!exiting) return
+    const t = setTimeout(() => useStore.getState().finishExit(), OFF_MS)
+    return () => clearTimeout(t)
+  }, [exiting])
 
-  const rect = useProjectedRect(shown)
-  const cfg = shown ? VIEWS[shown] : null
-  if (!cfg || !rect) return null
+  const rect = useProjectedRect(show ? view : null)
+  if (!show || !rect) return null
 
   const { w, h, cls, Comp } = cfg
   const scale = rect.width / w
