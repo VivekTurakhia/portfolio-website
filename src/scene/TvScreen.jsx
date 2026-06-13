@@ -23,6 +23,8 @@ const VIDEO_ASPECT = 16 / 9
 export function TvScreen({ geometry, fallbackMaterial }) {
   const tvOn = useStore((s) => s.tvOn)
   const tvClipIndex = useStore((s) => s.tvClipIndex)
+  // Power-on waits until the camera has actually arrived at the TV view.
+  const tvArrived = useStore((s) => s.currentView === 'tv' && s.cameraSettled)
 
   // Planar-UV'd, centre-pivoted copy of the screen geometry (computed once).
   const { screenGeometry, center } = useMemo(() => {
@@ -102,8 +104,8 @@ export function TvScreen({ geometry, fallbackMaterial }) {
   const [ready, setReady] = useState(false)
   const [opened, setOpened] = useState(false)
   useEffect(() => {
-    if (ready) setOpened(true)
-  }, [ready])
+    if (ready && tvArrived) setOpened(true)
+  }, [ready, tvArrived])
 
   // Drive the playlist: load + play current clip; advance the cycle when it ends.
   useEffect(() => {

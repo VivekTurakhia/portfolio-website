@@ -7,10 +7,36 @@ import { create } from 'zustand'
  */
 export const useStore = create((set, get) => ({
   // (state shape below; dev console access via window.__store at file bottom)
-  // ---- Camera view ----------------------------------------------------------
-  // Which named preset (see scene/views.js) the camera is animating toward.
+  // ---- Camera view & focus sequencing ---------------------------------------
+  // `currentView` is the preset the camera animates toward (see scene/views.js).
+  // The screen power-on/off animations are sequenced *around* the camera move so
+  // it feels real:
+  //   - entering a screen: camera flies in, THEN the screen powers on
+  //     (gated by `cameraSettled`, set true by CameraRig's spring onRest);
+  //   - leaving a monitor: the screen powers off FIRST (`exiting` phase), and
+  //     only when that finishes does the camera fly back to the room.
   currentView: 'room',
-  setView: (view) => set({ currentView: view }),
+  cameraSettled: true, // has the camera reached `currentView`?
+  exiting: false, // a monitor is playing its power-off before the camera leaves
+
+  setCameraSettled: (v) => set({ cameraSettled: v }),
+
+  // Focus a view. Changing target means the camera starts moving, so it's no
+  // longer settled and any pending exit is cancelled.
+  setView: (view) =>
+    set((s) => (s.currentView === view ? {} : { currentView: view, cameraSettled: false, exiting: false })),
+
+  // Back out of the current focus. Monitors power off first (camera waits);
+  // everything else (incl. the TV, which stays on) just flies back immediately.
+  leaveView: () => {
+    const { currentView, cameraSettled } = get()
+    const isMonitor = currentView === 'monitor1' || currentView === 'monitor2'
+    if (isMonitor && cameraSettled) set({ exiting: true })
+    else set({ currentView: 'room', cameraSettled: false, exiting: false })
+  },
+
+  // Called once a monitor's power-off animation has finished — now move camera.
+  finishExit: () => set({ currentView: 'room', cameraSettled: false, exiting: false }),
 
   // ---- Hover (drives the outline effect / cursor) ---------------------------
   hoveredId: null,

@@ -32,6 +32,9 @@ export function CameraRig() {
     api.start({
       px: v.position[0], py: v.position[1], pz: v.position[2],
       tx: v.target[0], ty: v.target[1], tz: v.target[2],
+      // The screen power-on waits on this: it fires once the camera has fully
+      // arrived at the focused view.
+      onRest: () => useStore.getState().setCameraSettled(true),
     })
   }, [currentView, api])
 
