@@ -1,4 +1,15 @@
 import { create } from 'zustand'
+import { tracks } from '../data/tracks'
+
+// Fisher-Yates shuffle of [0..n-1] — the play order for one "session" of music.
+function shuffleIndices(n) {
+  const a = Array.from({ length: n }, (_, i) => i)
+  for (let i = n - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
 
 /**
  * Global app state. Zustand is used (instead of React context/useState) because
@@ -47,12 +58,8 @@ export const useStore = create((set, get) => ({
   setSceneLoaded: (v = true) => set({ sceneLoaded: v }),
 
   introDone: false,
-  // Called by the intro "Enter" button. The click is also what unlocks browser
-  // audio autoplay, so we start the music here.
-  enter: () => {
-    set({ introDone: true })
-    get().playMusic()
-  },
+  // Music starts off; the speakers are the music control (see below).
+  enter: () => set({ introDone: true }),
 
   // ---- TV clip player --------------------------------------------------------
   // tvOn flips true on the first TV activation so the <video> elements are only
@@ -68,27 +75,23 @@ export const useStore = create((set, get) => ({
   ideBooted: false,
   setIdeBooted: () => set({ ideBooted: true }),
 
-  // ---- Audio ----------------------------------------------------------------
-  isMusicPlaying: false,
-  _audio: null, // the <audio> element, registered by <AudioController/>
-  registerAudio: (el) => set({ _audio: el }),
+  // ---- Music (speaker playlist) ---------------------------------------------
+  // The speakers toggle a shuffled loop of `tracks`. While on, <AudioController>
+  // auto-advances on each track's end and wraps back to the start, so it's never
+  // silent. Toggling on (re)shuffles and starts from the top of the new order.
+  musicOn: false,
+  order: shuffleIndices(tracks.length), // current shuffled play order (indices)
+  trackIndex: 0, // position within `order`
 
-  playMusic: () => {
-    const el = get()._audio
-    if (!el) return
-    el.play().then(() => set({ isMusicPlaying: true })).catch(() => {})
-  },
+  toggleMusic: () =>
+    set((s) =>
+      s.musicOn
+        ? { musicOn: false }
+        : { musicOn: true, order: shuffleIndices(tracks.length), trackIndex: 0 }
+    ),
 
-  toggleMusic: () => {
-    const el = get()._audio
-    if (!el) return
-    if (get().isMusicPlaying) {
-      el.pause()
-      set({ isMusicPlaying: false })
-    } else {
-      el.play().then(() => set({ isMusicPlaying: true })).catch(() => {})
-    }
-  },
+  // Advance to the next track, looping back to the beginning of the shuffle.
+  nextTrack: () => set((s) => ({ trackIndex: (s.trackIndex + 1) % s.order.length })),
 }))
 
 // Dev-only: poke at state from the browser console (window.__store.getState()).
