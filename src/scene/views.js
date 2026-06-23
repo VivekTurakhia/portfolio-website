@@ -16,7 +16,7 @@ export const views = {
   // Close-up, straight-on framing of monitor1's screen.
   // monitor1 node sits at [-0.321, 0.511, -0.857], screen faces +Z.
   monitor1: {
-    position: [-0.32, 0.642, -0.39],
+    position: [-0.316, 0.642, -0.39],
     target: [-0.32, 0.642, -0.857],
   },
 
@@ -25,8 +25,8 @@ export const views = {
   // sits out along that normal looking back, so the square screen reads
   // straight-on.
   monitor2: {
-    position: [-0.076, 0.487, -0.173],
-    target: [0.042, 0.487, -0.812],
+    position: [-0.035, 0.600, -0.400],
+    target: [0.042, 0.600, -0.812],
   },
 
   // tv at [0.631, 0.97, -0.67], rotated -0.105 rad about Y; normal ≈ [0.105, 0, 0.994].

@@ -1,7 +1,7 @@
 import { useMemo, useRef } from 'react'
 import { useGLTF } from '@react-three/drei'
 import { useFrame, useThree } from '@react-three/fiber'
-import { Box3, Vector3 } from 'three'
+import { Vector3 } from 'three'
 import { Interactive } from './Interactive'
 import { TvScreen } from './TvScreen'
 import { useStore } from '../state/useStore'
@@ -232,12 +232,17 @@ export function Room(props) {
 
 /**
  * Each frame, projects the active monitor's screen-face mesh (found by material
- * name) through the camera and writes its bounding pixel rect to `screenRect`,
- * which <ScreenOverlay> reads to glue the flat interactive panel onto the
- * monitor — accurate even while the camera is still flying in.
+ * name) through the camera and writes its on-screen pixel rect to `screenRect`,
+ * which <ScreenOverlay> reads to glue the flat interactive panel onto the monitor
+ * — accurate even while the camera is still flying in.
+ *
+ * Uses the mesh's *local* bounding box transformed to world space (the actual
+ * thin screen quad), not Box3.setFromObject (the world-axis-aligned box, which is
+ * inflated for rotated screens). The panel is then centred on the projected
+ * screen centre, so it stays centred regardless of the camera angle.
  */
-const _box = new Box3()
 const _v = new Vector3()
+const _c = new Vector3()
 function ScreenProjector() {
   const { camera, scene, gl } = useThree()
   const cache = useRef({})
@@ -256,13 +261,16 @@ function ScreenProjector() {
     }
     if (!mesh) return
 
-    _box.setFromObject(mesh)
-    const { min, max } = _box
+    if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox()
+    const lb = mesh.geometry.boundingBox
+    mesh.updateWorldMatrix(true, false)
     const cr = gl.domElement.getBoundingClientRect()
+
+    // Size: project the 8 corners of the local box (the real screen quad).
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
     for (let i = 0; i < 8; i++) {
-      _v.set(i & 1 ? max.x : min.x, i & 2 ? max.y : min.y, i & 4 ? max.z : min.z)
-      _v.project(camera)
+      _v.set(i & 1 ? lb.max.x : lb.min.x, i & 2 ? lb.max.y : lb.min.y, i & 4 ? lb.max.z : lb.min.z)
+      _v.applyMatrix4(mesh.matrixWorld).project(camera)
       const sx = (_v.x * 0.5 + 0.5) * cr.width
       const sy = (-_v.y * 0.5 + 0.5) * cr.height
       if (sx < minX) minX = sx
@@ -270,11 +278,19 @@ function ScreenProjector() {
       if (sx > maxX) maxX = sx
       if (sy > maxY) maxY = sy
     }
+
+    // Position: centre on the projected screen centre (robust for angled views).
+    lb.getCenter(_c).applyMatrix4(mesh.matrixWorld).project(camera)
+    const cx = (_c.x * 0.5 + 0.5) * cr.width
+    const cy = (-_c.y * 0.5 + 0.5) * cr.height
+    const width = maxX - minX
+    const height = maxY - minY
+
     screenRect[view] = {
-      left: cr.left + minX,
-      top: cr.top + minY,
-      width: maxX - minX,
-      height: maxY - minY,
+      left: cr.left + cx - width / 2,
+      top: cr.top + cy - height / 2,
+      width,
+      height,
     }
   })
 
