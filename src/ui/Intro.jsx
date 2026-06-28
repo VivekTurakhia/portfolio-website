@@ -27,7 +27,7 @@ export function Intro() {
       style={{ ...slide, pointerEvents: introDone ? 'none' : 'auto' }}
       aria-hidden={introDone}
     >
-      <h1 className="intro-title">Welcome to Vivek&apos;s Website</h1>
+      <h1 className="intro-title">Welcome to Vivek&apos;s Website!</h1>
 
       <div className="intro-canvas">
         <Canvas camera={{ position: [0, 1.45, 3], fov: 35 }} gl={{ alpha: true }}>

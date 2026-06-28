@@ -26,5 +26,5 @@ export const statusData = {
     url: null,
   },
 
-  statusLine: "CE @ UIUC '27 · open to SWE '27",
+  statusLine: "CE @ UIUC '27",
 }
