@@ -610,9 +610,12 @@ body,
 }
 .bento-handle {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 11.5px;
+  font-size: 10.5px;
+  letter-spacing: -0.02em;
   color: #cfc7ff;
-  word-break: break-all;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Clock/status: bottom-right, stacked */

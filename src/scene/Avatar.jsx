@@ -31,9 +31,12 @@ export function Avatar({ animation = 'Typing', ...props }) {
   useEffect(() => {
     const action = actions[animation]
     if (!action) return
-    action.reset().fadeIn(0.4).play()
+    // Play at full weight immediately — no fade-in. Fading in blended from the
+    // avatar's reclined bind pose, which read as the wave "rising from
+    // horizontal" before settling into the loop.
+    action.reset().play()
     return () => {
-      action.fadeOut(0.4)
+      action.stop()
     }
   }, [animation, actions])
 

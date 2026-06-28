@@ -173,7 +173,7 @@ export function Room(props) {
       <Interactive id="tv">
         <group position={[0.631, 0.97, -0.67]} rotation={[0, -0.105, 0]} scale={1.524}>
           <mesh geometry={nodes.Cube002.geometry} material={materials.metallicplastic} />
-          <TvScreen geometry={nodes.Cube002_1.geometry} fallbackMaterial={materials.tvscreen} />
+          <TvScreen geometry={nodes.Cube002_1.geometry} />
           <mesh geometry={nodes.Cube002_2.geometry} material={materials.blackplastic} />
           <mesh geometry={nodes.Cube002_3.geometry} material={materials.emission_red_lite} />
         </group>

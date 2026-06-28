@@ -7,24 +7,26 @@ import { movieClips } from '../data/movieClips'
 const VIDEO_ASPECT = 16 / 9
 
 /**
- * The TV's screen face. Before the TV is first activated it renders the original
- * dark `tvscreen` material from the GLB; once activated it becomes a live
- * VideoTexture playing the favourite-films cycle. The <video> element is created
- * only on activation, so the (large) clip files aren't fetched until someone
- * actually clicks the TV — and once on, the TV stays on (no power-off).
+ * The TV's screen face. It shows the dark `tvscreen` material when off, and a
+ * live VideoTexture (the favourite-films cycle) while you're viewing it. The
+ * <video> element is created on first activation (so the large clips aren't
+ * fetched until someone clicks the TV) and persists, but **playback only runs
+ * while the TV view is focused** — leaving the view pauses it (stopping the
+ * audio) and turns the screen off.
  *
  * Power-on: the screen opens from a centre line, expanding up + down (the mesh's
- * scale.y springs 0 → 1). The geometry is recentred at its bounding-box centre so
- * that vertical scaling pivots about the middle of the screen.
+ * scale.y springs 0 → 1) once the camera has arrived. The geometry is recentred
+ * at its bounding-box centre so vertical scaling pivots about the middle.
  *
  * The GLB face has no usable UVs, so we also generate planar UVs scaled so the
  * 16:9 video *covers* the face (like CSS object-fit: cover).
  */
-export function TvScreen({ geometry, fallbackMaterial }) {
+export function TvScreen({ geometry }) {
   const tvOn = useStore((s) => s.tvOn)
   const tvClipIndex = useStore((s) => s.tvClipIndex)
-  // Power-on waits until the camera has actually arrived at the TV view.
-  const tvArrived = useStore((s) => s.currentView === 'tv' && s.cameraSettled)
+  // True only while the TV view is focused and the camera has arrived — drives
+  // both the screen power-on and whether the video is playing.
+  const viewing = useStore((s) => s.currentView === 'tv' && s.cameraSettled)
 
   // Planar-UV'd, centre-pivoted copy of the screen geometry (computed once).
   const { screenGeometry, center } = useMemo(() => {
@@ -99,30 +101,30 @@ export function TvScreen({ geometry, fallbackMaterial }) {
     return new THREE.MeshBasicMaterial({ map: texture, toneMapped: false })
   }, [texture])
 
-  // `opened` latches true once the first frame is decodable, kicking off the
-  // power-on. It never resets, so swapping clips later doesn't re-animate.
+  // Dark "powered-off" screen, used whenever the TV isn't being viewed (the
+  // GLB's `tvscreen` material is emissive white, which reads as on-but-blank).
+  const offMaterial = useMemo(
+    () => new THREE.MeshBasicMaterial({ color: '#0a0a0f', toneMapped: false }),
+    []
+  )
+
+  // `opened` = screen is on. It tracks `viewing`: it opens once the first frame
+  // is ready after the camera arrives, stays open across clip changes, and turns
+  // off the moment you leave the view.
   const [ready, setReady] = useState(false)
   const [opened, setOpened] = useState(false)
   useEffect(() => {
-    if (ready && tvArrived) setOpened(true)
-  }, [ready, tvArrived])
+    if (!viewing) setOpened(false)
+    else if (ready) setOpened(true)
+  }, [viewing, ready])
 
-  // Drive the playlist: load + play current clip; advance the cycle when it ends.
+  // Load the current clip and advance the cycle when it ends (playback itself is
+  // handled by the viewing effect below).
   useEffect(() => {
     if (!video) return
     setReady(false)
     video.src = movieClips[tvClipIndex].src
-    video.play().catch(() => {
-      // Autoplay-with-sound can be blocked without a fresh user gesture; fall
-      // back to muted, then unmute on the next interaction anywhere.
-      video.muted = true
-      video.play().catch(() => {})
-      const unmute = () => {
-        video.muted = false
-        if (video.paused) video.play().catch(() => {})
-      }
-      window.addEventListener('pointerdown', unmute, { once: true })
-    })
+    video.load()
     const onLoaded = () => setReady(true)
     const onEnded = () => useStore.getState().tvAdvance(movieClips.length)
     video.addEventListener('loadeddata', onLoaded)
@@ -132,6 +134,26 @@ export function TvScreen({ geometry, fallbackMaterial }) {
       video.removeEventListener('ended', onEnded)
     }
   }, [video, tvClipIndex])
+
+  // Play only while viewing; pause (stopping the audio) when the view is left.
+  useEffect(() => {
+    if (!video) return
+    if (viewing && ready) {
+      video.play().catch(() => {
+        // Autoplay-with-sound can be blocked; fall back to muted, then unmute on
+        // the next interaction anywhere.
+        video.muted = true
+        video.play().catch(() => {})
+        const unmute = () => {
+          video.muted = false
+          if (video.paused) video.play().catch(() => {})
+        }
+        window.addEventListener('pointerdown', unmute, { once: true })
+      })
+    } else if (!viewing) {
+      video.pause()
+    }
+  }, [viewing, ready, video])
 
   // Teardown on unmount: stop fetching/decoding and free the GPU texture.
   useEffect(() => {
@@ -163,11 +185,10 @@ export function TvScreen({ geometry, fallbackMaterial }) {
     if (Math.abs(m.scale.y - target) < 0.001) m.scale.y = target
   })
 
-  // Before activation, the plain dark screen (and it never re-fetches the clips).
-  if (!tvOn || !videoMaterial) {
-    return <mesh geometry={geometry} material={fallbackMaterial} />
+  // Off (not activated, or not currently viewing) → the dark powered-off screen.
+  if (!tvOn || !videoMaterial || !opened) {
+    return <mesh geometry={geometry} material={offMaterial} />
   }
-  // Video mesh mounts immediately on activation but stays collapsed (scale.y 0,
-  // hiding the pre-decode flash) until `opened` springs it up + down.
+  // On → the video mesh, mounting collapsed (scale.y 0) and springing open.
   return <mesh ref={attachMesh} geometry={screenGeometry} position={center} material={videoMaterial} />
 }
