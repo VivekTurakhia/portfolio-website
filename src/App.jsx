@@ -12,6 +12,7 @@ import { ScreenOverlay } from './ui/ScreenOverlay.jsx'
 import { AudioController } from './ui/AudioController.jsx'
 import { NowPlayingChip } from './ui/NowPlayingChip.jsx'
 import { useStore } from './state/useStore.js'
+import { useIsMobile } from './useIsMobile.js'
 
 /**
  * Mounted inside <Suspense> alongside the scene, so its effect fires only once
@@ -27,12 +28,16 @@ function SceneReadySignal() {
 }
 
 export default function App() {
+  // Phones: cap the pixel ratio lower and skip the hover-outline post pass
+  // (touch has no hover, so the outline never shows there anyway).
+  const isMobile = useIsMobile()
+
   return (
     <div className="app">
       <NavBar />
 
       <div className="canvas-wrap">
-        <Canvas dpr={[1, 2]} gl={{ antialias: true }}>
+        <Canvas dpr={isMobile ? [1, 1.5] : [1, 2]} gl={{ antialias: true }}>
           <color attach="background" args={['#15131f']} />
 
           {/* Stand-in for Blender's world ambient: a near-black neutral fill
@@ -44,16 +49,20 @@ export default function App() {
           <CameraRig />
 
           {/* One Selection/Outline pass at the top level. Selectable meshes
-              (via <Interactive>) live inside this same <Selection>. */}
+              (via <Interactive>) live inside this same <Selection> — keep the
+              <Selection> context mounted even on mobile (Interactive's <Select>
+              requires it); only the fullscreen composer pass is skipped. */}
           <Selection>
-            <EffectComposer autoClear={false} multisampling={4}>
-              <Outline
-                blur
-                edgeStrength={6}
-                visibleEdgeColor={0xffffff}
-                hiddenEdgeColor={0xffffff}
-              />
-            </EffectComposer>
+            {!isMobile && (
+              <EffectComposer autoClear={false} multisampling={4}>
+                <Outline
+                  blur
+                  edgeStrength={6}
+                  visibleEdgeColor={0xffffff}
+                  hiddenEdgeColor={0xffffff}
+                />
+              </EffectComposer>
+            )}
 
             <Suspense fallback={null}>
               <Room />
