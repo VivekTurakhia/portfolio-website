@@ -1,12 +1,37 @@
 import { useRef, useEffect } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
 import { PerspectiveCamera } from '@react-three/drei'
 import { useSpring } from '@react-spring/three'
-import { Vector3 } from 'three'
+import { MathUtils, Vector3 } from 'three'
 import { useStore } from '../state/useStore'
 import { views, DEFAULT_VIEW } from './views'
 
 const _target = new Vector3()
+const _dir = new Vector3()
+
+const BASE_FOV = 50
+// Aspect below which we start compensating for the narrow viewport. Desktop
+// canvases (e.g. 1280x680 after the nav) sit well above this and are untouched.
+// 1.15 (not the actual desktop ~1.9) preserves just the content-critical middle
+// of the desktop frame, so phones aren't over-zoomed-out.
+const REF_ASPECT = 1.15
+// Widen the lens at most to this; any remaining horizontal shortfall is covered
+// by dollying the camera back (avoids fisheye distortion at phone aspects).
+const MAX_FOV = 68
+
+/**
+ * For viewports narrower than REF_ASPECT, compute the fov + dolly factor that
+ * preserve the horizontal extent a REF_ASPECT canvas would see (three.js fov is
+ * vertical, so narrow screens crop the sides otherwise). At/above REF_ASPECT
+ * this returns the identity ({ fov: BASE_FOV, dolly: 1 }) — desktop unchanged.
+ */
+function fitNarrowAspect(aspect) {
+  if (aspect >= REF_ASPECT) return { fov: BASE_FOV, dolly: 1 }
+  const needTan = Math.tan(MathUtils.degToRad(BASE_FOV) / 2) * (REF_ASPECT / aspect)
+  const maxTan = Math.tan(MathUtils.degToRad(MAX_FOV) / 2)
+  if (needTan <= maxTan) return { fov: 2 * MathUtils.radToDeg(Math.atan(needTan)), dolly: 1 }
+  return { fov: MAX_FOV, dolly: needTan / maxTan }
+}
 
 /**
  * Fixed-view camera. There is no OrbitControls — the camera only moves between
@@ -15,9 +40,13 @@ const _target = new Vector3()
  *
  * Scalar springs (px/py/pz, tx/ty/tz) are used instead of array springs so the
  * interpolation is rock-solid and easy to read each frame.
+ *
+ * On narrow (phone) viewports the frame loop additionally applies the
+ * fitNarrowAspect() compensation so no view is cropped at the sides.
  */
 export function CameraRig() {
   const camRef = useRef()
+  const size = useThree((s) => s.size)
   const currentView = useStore((s) => s.currentView)
   const start = views[DEFAULT_VIEW]
 
@@ -41,8 +70,21 @@ export function CameraRig() {
   useFrame(() => {
     const cam = camRef.current
     if (!cam) return
+    const { fov, dolly } = fitNarrowAspect(size.width / size.height)
+
     cam.position.set(spring.px.get(), spring.py.get(), spring.pz.get())
     _target.set(spring.tx.get(), spring.ty.get(), spring.tz.get())
+
+    // Narrow-viewport compensation: dolly back along the view direction (>1
+    // only when the fov cap alone can't restore the horizontal extent).
+    if (dolly !== 1) {
+      _dir.copy(cam.position).sub(_target).multiplyScalar(dolly)
+      cam.position.copy(_target).add(_dir)
+    }
+    if (Math.abs(cam.fov - fov) > 0.01) {
+      cam.fov = fov
+      cam.updateProjectionMatrix()
+    }
     cam.lookAt(_target)
   })
 
