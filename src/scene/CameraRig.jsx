@@ -15,9 +15,12 @@ const BASE_FOV = 50
 // 1.15 (not the actual desktop ~1.9) preserves just the content-critical middle
 // of the desktop frame, so phones aren't over-zoomed-out.
 const REF_ASPECT = 1.15
-// Widen the lens at most to this; any remaining horizontal shortfall is covered
-// by dollying the camera back (avoids fisheye distortion at phone aspects).
-const MAX_FOV = 68
+// Room: widen the lens at most this much, then dolly back for the rest (keeps
+// the room from looking fisheye). Screen views can't dolly (avatar/desk right
+// behind), so they get a higher cap to pull the whole flat screen into frame —
+// wide-angle on a straight-on flat screen is barely noticeable.
+const MAX_FOV_ROOM = 68
+const MAX_FOV_SCREEN = 82
 
 /**
  * For viewports narrower than REF_ASPECT, compute the fov + dolly factor that
@@ -25,12 +28,12 @@ const MAX_FOV = 68
  * vertical, so narrow screens crop the sides otherwise). At/above REF_ASPECT
  * this returns the identity ({ fov: BASE_FOV, dolly: 1 }) — desktop unchanged.
  */
-function fitNarrowAspect(aspect) {
+function fitNarrowAspect(aspect, maxFov) {
   if (aspect >= REF_ASPECT) return { fov: BASE_FOV, dolly: 1 }
   const needTan = Math.tan(MathUtils.degToRad(BASE_FOV) / 2) * (REF_ASPECT / aspect)
-  const maxTan = Math.tan(MathUtils.degToRad(MAX_FOV) / 2)
+  const maxTan = Math.tan(MathUtils.degToRad(maxFov) / 2)
   if (needTan <= maxTan) return { fov: 2 * MathUtils.radToDeg(Math.atan(needTan)), dolly: 1 }
-  return { fov: MAX_FOV, dolly: needTan / maxTan }
+  return { fov: maxFov, dolly: needTan / maxTan }
 }
 
 /**
@@ -70,14 +73,21 @@ export function CameraRig() {
   useFrame(() => {
     const cam = camRef.current
     if (!cam) return
-    const { fov, dolly } = fitNarrowAspect(size.width / size.height)
+
+    // The dolly-back is only safe for the room (open space behind the camera).
+    // For the tight close-up screen views it would push the camera THROUGH the
+    // avatar/desk, so there we compensate with fov only (higher cap), keeping the
+    // camera in front of the screen with the avatar behind it.
+    const roomView = useStore.getState().currentView === DEFAULT_VIEW
+    const { fov, dolly } = fitNarrowAspect(
+      size.width / size.height,
+      roomView ? MAX_FOV_ROOM : MAX_FOV_SCREEN
+    )
 
     cam.position.set(spring.px.get(), spring.py.get(), spring.pz.get())
     _target.set(spring.tx.get(), spring.ty.get(), spring.tz.get())
 
-    // Narrow-viewport compensation: dolly back along the view direction (>1
-    // only when the fov cap alone can't restore the horizontal extent).
-    if (dolly !== 1) {
+    if (roomView && dolly !== 1) {
       _dir.copy(cam.position).sub(_target).multiplyScalar(dolly)
       cam.position.copy(_target).add(_dir)
     }

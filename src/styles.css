@@ -24,7 +24,9 @@ body,
 /* ---- Layout: nav (top ~15%) + canvas (rest) ------------------------------ */
 .app {
   width: 100vw;
-  height: 100vh;
+  height: 100vh; /* fallback */
+  height: 100dvh; /* iOS: match the *visible* viewport so bottom controls (Back,
+                     TV/now-playing) aren't pushed behind Safari's toolbar */
   display: flex;
   flex-direction: column;
 }

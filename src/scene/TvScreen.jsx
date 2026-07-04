@@ -73,18 +73,35 @@ export function TvScreen({ geometry }) {
     return { screenGeometry: g, center: [c.x, c.y, c.z] }
   }, [geometry])
 
-  // One <video> element for the TV's lifetime, created on first activation.
+  // One <video> for the TV's lifetime, created eagerly (with no src, so no bytes
+  // are fetched until activation) and attached to the DOM hidden. iOS requires a
+  // DOM-attached element and a play() call inside a tap (see store.tvActivate)
+  // before a VideoTexture will update — so the element must exist before the tap.
   const video = useMemo(() => {
-    if (!tvOn) return null
     const v = document.createElement('video')
     v.playsInline = true
+    v.muted = true
+    v.setAttribute('playsinline', '')
+    v.setAttribute('webkit-playsinline', '')
     v.preload = 'auto'
     v.crossOrigin = 'anonymous'
+    v.style.cssText = 'position:fixed;left:-9999px;top:0;width:1px;height:1px;opacity:0;pointer-events:none;'
     return v
-  }, [tvOn])
+  }, [])
+
+  useEffect(() => {
+    document.body.appendChild(video)
+    useStore.getState().registerTvVideo(video)
+    return () => {
+      useStore.getState().registerTvVideo(null)
+      video.pause()
+      video.removeAttribute('src')
+      video.load()
+      video.remove()
+    }
+  }, [video])
 
   const texture = useMemo(() => {
-    if (!video) return null
     const t = new THREE.VideoTexture(video)
     t.colorSpace = THREE.SRGBColorSpace
     t.flipY = false // glTF-convention geometry: V runs top-down.
@@ -96,10 +113,10 @@ export function TvScreen({ geometry }) {
   // Built imperatively and passed via the `material` prop: swapping a mesh from a
   // `material` prop to a JSX child <meshBasicMaterial> hits an R3F reconciliation
   // edge case where the child's props never apply. A concrete material avoids it.
-  const videoMaterial = useMemo(() => {
-    if (!texture) return null
-    return new THREE.MeshBasicMaterial({ map: texture, toneMapped: false })
-  }, [texture])
+  const videoMaterial = useMemo(
+    () => new THREE.MeshBasicMaterial({ map: texture, toneMapped: false }),
+    [texture]
+  )
 
   // Dark "powered-off" screen, used whenever the TV isn't being viewed (the
   // GLB's `tvscreen` material is emissive white, which reads as on-but-blank).
@@ -118,13 +135,19 @@ export function TvScreen({ geometry }) {
     else if (ready) setOpened(true)
   }, [viewing, ready])
 
-  // Load the current clip and advance the cycle when it ends (playback itself is
-  // handled by the viewing effect below).
+  // Load the current clip once the TV is on, and advance the cycle when it ends.
+  // The first clip's src is set inside the tap by store.tvActivate, so skip
+  // re-setting it here (that would clobber the in-gesture load on iOS).
   useEffect(() => {
-    if (!video) return
-    setReady(false)
-    video.src = movieClips[tvClipIndex].src
-    video.load()
+    if (!tvOn) return
+    const src = movieClips[tvClipIndex].src
+    if (!video.src.endsWith(src)) {
+      setReady(false)
+      video.src = src
+      video.load()
+    } else if (video.readyState >= 2) {
+      setReady(true) // already loaded by the in-gesture play()
+    }
     const onLoaded = () => setReady(true)
     const onEnded = () => useStore.getState().tvAdvance(movieClips.length)
     video.addEventListener('loadeddata', onLoaded)
@@ -133,43 +156,25 @@ export function TvScreen({ geometry }) {
       video.removeEventListener('loadeddata', onLoaded)
       video.removeEventListener('ended', onEnded)
     }
-  }, [video, tvClipIndex])
+  }, [video, tvOn, tvClipIndex])
 
-  // Play only while viewing; pause (stopping the audio) when the view is left.
+  // Unmute + play while viewing; pause (stopping the audio) when the view is left.
   useEffect(() => {
-    if (!video) return
     if (viewing && ready) {
+      video.muted = false
       video.play().catch(() => {
-        // Autoplay-with-sound can be blocked; fall back to muted, then unmute on
-        // the next interaction anywhere.
+        // If unmuted playback is blocked, keep it running muted.
         video.muted = true
         video.play().catch(() => {})
-        const unmute = () => {
-          video.muted = false
-          if (video.paused) video.play().catch(() => {})
-        }
-        window.addEventListener('pointerdown', unmute, { once: true })
       })
     } else if (!viewing) {
       video.pause()
     }
   }, [viewing, ready, video])
 
-  // Teardown on unmount: stop fetching/decoding and free the GPU texture.
-  useEffect(() => {
-    if (!video) return
-    return () => {
-      video.pause()
-      video.removeAttribute('src')
-      video.load()
-      texture?.dispose()
-    }
-  }, [video, texture])
-
-  useEffect(() => {
-    if (!videoMaterial) return
-    return () => videoMaterial.dispose()
-  }, [videoMaterial])
+  // Free the GPU texture / material on unmount.
+  useEffect(() => () => texture.dispose(), [texture])
+  useEffect(() => () => videoMaterial.dispose(), [videoMaterial])
 
   // Start collapsed; spring scale.y toward the open target each frame.
   const meshRef = useRef(null)
@@ -186,7 +191,7 @@ export function TvScreen({ geometry }) {
   })
 
   // Off (not activated, or not currently viewing) → the dark powered-off screen.
-  if (!tvOn || !videoMaterial || !opened) {
+  if (!tvOn || !opened) {
     return <mesh geometry={geometry} material={offMaterial} />
   }
   // On → the video mesh, mounting collapsed (scale.y 0) and springing open.

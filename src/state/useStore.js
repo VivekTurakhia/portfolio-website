@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { tracks } from '../data/tracks'
+import { movieClips } from '../data/movieClips'
 
 // Fisher-Yates shuffle of [0..n-1] — the play order for one "session" of music.
 function shuffleIndices(n) {
@@ -62,11 +63,24 @@ export const useStore = create((set, get) => ({
   enter: () => set({ introDone: true }),
 
   // ---- TV clip player --------------------------------------------------------
-  // tvOn flips true on the first TV activation so the <video> elements are only
-  // created (and bytes fetched) once someone actually looks at the TV.
+  // tvOn flips true on the first TV activation so the clip bytes are only fetched
+  // once someone looks at the TV. `_tvVideo` is the <video> element (registered
+  // by TvScreen); tvActivate kicks playback off *synchronously inside the tap*,
+  // which iOS requires — otherwise the film never loads or plays on iPhone.
   tvOn: false,
   tvClipIndex: 0,
-  tvActivate: () => set({ tvOn: true }),
+  _tvVideo: null,
+  registerTvVideo: (el) => set({ _tvVideo: el }),
+  tvActivate: () => {
+    set({ tvOn: true })
+    const v = get()._tvVideo
+    if (v) {
+      if (!v.src) v.src = movieClips[get().tvClipIndex].src
+      v.muted = true // muted autoplay is allowed on iOS; TvScreen unmutes on focus
+      const p = v.play()
+      if (p && p.catch) p.catch(() => {})
+    }
+  },
   tvAdvance: (count) =>
     set((s) => ({ tvClipIndex: (s.tvClipIndex + 1) % count })),
 
