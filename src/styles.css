@@ -110,8 +110,12 @@ body,
 }
 
 /* ---- Interactive screen overlay (flat, projected onto the monitor) -------- */
+/* Positioned `absolute` inside .canvas-wrap (the canvas's own positioned parent)
+   with canvas-relative coords from ScreenProjector, so it shares the canvas's
+   layout box and stays glued to the 3D monitor under mobile pinch-zoom (a
+   position:fixed overlay drifts against the visual viewport on iOS). */
 .screen-overlay {
-  position: fixed;
+  position: absolute;
   z-index: 6;
   overflow: hidden;
   pointer-events: auto;

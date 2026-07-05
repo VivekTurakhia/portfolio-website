@@ -286,9 +286,14 @@ function ScreenProjector() {
     const width = maxX - minX
     const height = maxY - minY
 
+    // Canvas-relative (not viewport) coords: <ScreenOverlay> is positioned
+    // `absolute` inside the canvas's own layout parent (.canvas-wrap), so it
+    // zooms and pans together with the WebGL canvas under mobile pinch-zoom.
+    // A position:fixed, viewport-anchored overlay drifts from the 3D monitor on
+    // iOS because fixed elements track the layout viewport, not the visual one.
     screenRect[view] = {
-      left: cr.left + cx - width / 2,
-      top: cr.top + cy - height / 2,
+      left: cx - width / 2,
+      top: cy - height / 2,
       width,
       height,
     }
