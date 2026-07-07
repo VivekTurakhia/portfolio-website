@@ -1,21 +1,22 @@
 import { useEffect, useState } from 'react'
 import { useStore } from '../../state/useStore'
 import { statusData } from './statusData'
-import { useNowPlaying } from './useNowPlaying'
 
 /**
  * Monitor B: bento-grid status dashboard — now playing (Spotify), currently
  * reading, contact, and a live clock/status strip. Default export for React.lazy.
+ *
+ * Data + images are fetched/preloaded by <NowPlayingController> while the camera
+ * flies in; the whole grid is held hidden until both are ready so tiles never
+ * visibly pop in — they appear already fully loaded.
  */
-export default function StatusScreen({ live = true }) {
-  const active = useStore((s) => s.currentView === 'monitor2')
-  // Only the interactive overlay copy polls Spotify; the decorative in-world
-  // copy uses the static fallback (no duplicate requests).
-  const now = useNowPlaying(active && live)
+export default function StatusScreen() {
+  const now = useStore((s) => s.nowPlaying)
+  const ready = useStore((s) => s.nowPlayingReady && s.coverReady)
   const { contact, reading, statusLine } = statusData
 
   return (
-    <div className="bento">
+    <div className="bento" style={{ opacity: ready ? 1 : 0, transition: 'opacity 0.3s ease' }}>
       <NowPlayingTile now={now} />
       <ReadingTile reading={reading} />
 

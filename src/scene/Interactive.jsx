@@ -1,43 +1,37 @@
-import { useEffect, useState } from 'react'
 import { Select } from '@react-three/postprocessing'
 import { useStore } from '../state/useStore'
 import { interactables } from './interactables'
 
 /**
- * Generic wrapper that turns any group of meshes into a clickable object.
+ * Generic wrapper that turns a group of meshes into a clickable object.
  *
- * Hover highlighting (the postprocessing outline) and the pointer cursor are
- * only active in the room view. Once the camera has focused on something, no
- * object should light up or look "selectable" — but clicks stay live so the TV
- * can still be clicked to advance to the next clip while you're watching it.
+ * The postprocessing outline is driven by the store's `hoveredId`, so an object
+ * lights up whether you hover its mesh OR hover the matching nav tab / music
+ * toggle. `group` lets several meshes (e.g. both speakers) share one hover key.
+ *
+ * Highlighting is room-only — once the camera has focused on something nothing
+ * lights up — but clicks stay live everywhere (so the TV can advance clips).
  */
-export function Interactive({ id, children, ...props }) {
-  const [hovered, setHovered] = useState(false)
-  const inRoom = useStore((s) => s.currentView === 'room')
+export function Interactive({ id, group, children, ...props }) {
   const def = interactables[id]
-
-  // Leaving the room cancels any in-progress hover (the pointerOut event may
-  // never fire once the camera flies away).
-  useEffect(() => {
-    if (!inRoom) {
-      setHovered(false)
-      document.body.style.cursor = 'auto'
-    }
-  }, [inRoom])
+  // Boolean selector: this Interactive only re-renders when its own highlight
+  // state flips, not on every hover change.
+  const highlighted = useStore(
+    (s) => s.currentView === 'room' && (s.hoveredId === id || (group != null && s.hoveredId === group))
+  )
 
   const onOver = (e) => {
-    if (!inRoom) return
+    if (useStore.getState().currentView !== 'room') return
     e.stopPropagation()
-    setHovered(true)
-    useStore.getState().setHovered(id)
+    useStore.getState().setHovered(group ?? id)
     document.body.style.cursor = 'pointer'
   }
 
   const onOut = (e) => {
-    if (!inRoom) return
+    if (useStore.getState().currentView !== 'room') return
     e.stopPropagation()
-    setHovered(false)
-    if (useStore.getState().hoveredId === id) useStore.getState().setHovered(null)
+    const hv = useStore.getState().hoveredId
+    if (hv === id || hv === group) useStore.getState().setHovered(null)
     document.body.style.cursor = 'auto'
   }
 
@@ -47,7 +41,7 @@ export function Interactive({ id, children, ...props }) {
   }
 
   return (
-    <Select enabled={inRoom && hovered}>
+    <Select enabled={highlighted}>
       <group onPointerOver={onOver} onPointerOut={onOut} onClick={onClick} {...props}>
         {children}
       </group>

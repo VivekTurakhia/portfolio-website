@@ -105,8 +105,9 @@ export function Room(props) {
         <mesh geometry={nodes.Cube001_7.geometry} material={materials.wall} />
       </group>
 
-      {/* speakers1 — interactive: toggle music */}
-      <Interactive id="speakers1">
+      {/* speakers1 — interactive: toggle music (grouped so both speakers +
+          the music toggle highlight together) */}
+      <Interactive id="speakers1" group="speakers">
         <group position={[-0.312, 0.486, -0.776]} scale={0.02}>
           <mesh geometry={nodes.Cube003.geometry} material={materials.blackplastic} />
           <mesh geometry={nodes.Cube003_1.geometry} material={materials.metallicplastic} />
@@ -180,7 +181,7 @@ export function Room(props) {
       </Interactive>
 
       {/* speakers2 — interactive: toggle music */}
-      <Interactive id="speakers2">
+      <Interactive id="speakers2" group="speakers">
         <group position={[0.446, 1.337, -0.719]} rotation={[0, -0.253, 0]} scale={0.06}>
           <mesh geometry={nodes.Cube004.geometry} material={materials.blackplastic} />
           <mesh geometry={nodes.Cube004_1.geometry} material={materials.metallicplastic} />
