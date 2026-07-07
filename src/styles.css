@@ -88,6 +88,38 @@ body,
   background: rgba(124, 58, 237, 0.25);
 }
 
+/* ---- Nav right group (tabs + music toggle) ------------------------------- */
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.music-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid rgba(167, 139, 250, 0.35);
+  background: none;
+  color: var(--accent-light);
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.music-toggle:hover {
+  color: #fff;
+  background: rgba(124, 58, 237, 0.25);
+  border-color: var(--accent-light);
+}
+.music-toggle.is-on {
+  color: #fff;
+  background: rgba(124, 58, 237, 0.4);
+  border-color: var(--accent);
+}
+
 /* ---- Back button --------------------------------------------------------- */
 /* Bottom-left so it never overlaps the centered monitor panel / its file tree;
    z above the screen overlay so exiting always works. */
@@ -897,6 +929,17 @@ body,
     font-size: 0.68rem;
     padding: 0.9em 0.55em; /* keeps ~38px-tall tap targets */
     white-space: nowrap;
+  }
+  .navbar-right {
+    gap: 0.4rem;
+  }
+  .music-toggle {
+    width: 32px;
+    height: 32px;
+  }
+  .music-toggle svg {
+    width: 17px;
+    height: 17px;
   }
 
   /* Bottom overlay row: back (left) / TV controls (center, raised) / chip (right)

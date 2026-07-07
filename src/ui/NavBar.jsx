@@ -1,8 +1,9 @@
 import { useStore } from '../state/useStore'
+import { MusicToggle } from './MusicToggle.jsx'
 
 /**
- * Top nav bar (~15% viewport height). Each tab triggers a room action.
- * To add a tab, push another entry into `tabs`.
+ * Top nav bar. Each tab triggers a room action, and hovering a tab highlights
+ * the object it targets (same outline as hovering the object itself).
  */
 export function NavBar() {
   const currentView = useStore((s) => s.currentView)
@@ -22,21 +23,31 @@ export function NavBar() {
     },
   ]
 
+  const onEnter = (target) => () => useStore.getState().setHovered(target)
+  const onLeave = (target) => () => {
+    if (useStore.getState().hoveredId === target) useStore.getState().setHovered(null)
+  }
+
   return (
     <nav className="navbar">
       <div className="navbar-brand">VIVEK</div>
-      <ul className="navbar-tabs">
-        {tabs.map((t) => (
-          <li key={t.id}>
-            <button
-              className={'navbar-tab' + (currentView === t.view ? ' is-active' : '')}
-              onClick={t.onClick}
-            >
-              {t.label}
-            </button>
-          </li>
-        ))}
-      </ul>
+      <div className="navbar-right">
+        <ul className="navbar-tabs">
+          {tabs.map((t) => (
+            <li key={t.id}>
+              <button
+                className={'navbar-tab' + (currentView === t.view ? ' is-active' : '')}
+                onClick={t.onClick}
+                onMouseEnter={onEnter(t.view)}
+                onMouseLeave={onLeave(t.view)}
+              >
+                {t.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+        <MusicToggle />
+      </div>
     </nav>
   )
 }

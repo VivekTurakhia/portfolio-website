@@ -11,6 +11,7 @@ import { TvOverlay } from './ui/TvOverlay.jsx'
 import { ScreenOverlay } from './ui/ScreenOverlay.jsx'
 import { AudioController } from './ui/AudioController.jsx'
 import { NowPlayingChip } from './ui/NowPlayingChip.jsx'
+import { NowPlayingController } from './ui/status/NowPlayingController.jsx'
 import { useStore } from './state/useStore.js'
 import { useIsMobile } from './useIsMobile.js'
 
@@ -24,6 +25,19 @@ function SceneReadySignal() {
   useEffect(() => {
     setSceneLoaded(true)
   }, [setSceneLoaded])
+  return null
+}
+
+/**
+ * Resets the pointer cursor when leaving the room. Interactive sets cursor:pointer
+ * on hover, but when you click a monitor the camera zooms INTO that mesh, so it
+ * never fires pointerOut — the cursor would otherwise stay a pointer in the view.
+ */
+function CursorManager() {
+  const currentView = useStore((s) => s.currentView)
+  useEffect(() => {
+    if (currentView !== 'room') document.body.style.cursor = 'auto'
+  }, [currentView])
   return null
 }
 
@@ -81,6 +95,8 @@ export default function App() {
       <Intro />
       <AudioController />
       <NowPlayingChip />
+      <NowPlayingController />
+      <CursorManager />
     </div>
   )
 }

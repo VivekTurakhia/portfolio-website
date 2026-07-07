@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { tracks } from '../data/tracks'
 import { movieClips } from '../data/movieClips'
+import { statusData } from '../ui/status/statusData'
 
 // Fisher-Yates shuffle of [0..n-1] — the play order for one "session" of music.
 function shuffleIndices(n) {
@@ -34,9 +35,10 @@ export const useStore = create((set, get) => ({
   setCameraSettled: (v) => set({ cameraSettled: v }),
 
   // Focus a view. Changing target means the camera starts moving, so it's no
-  // longer settled and any pending exit is cancelled.
+  // longer settled and any pending exit is cancelled. Clear hover so no object
+  // is left highlighted after a nav-tab click.
   setView: (view) =>
-    set((s) => (s.currentView === view ? {} : { currentView: view, cameraSettled: false, exiting: false })),
+    set((s) => (s.currentView === view ? {} : { currentView: view, cameraSettled: false, exiting: false, hoveredId: null })),
 
   // Back out of the current focus. Monitors power off first (camera waits);
   // everything else (incl. the TV, which stays on) just flies back immediately.
@@ -44,13 +46,15 @@ export const useStore = create((set, get) => ({
     const { currentView, cameraSettled } = get()
     const isMonitor = currentView === 'monitor1' || currentView === 'monitor2'
     if (isMonitor && cameraSettled) set({ exiting: true })
-    else set({ currentView: 'room', cameraSettled: false, exiting: false })
+    else set({ currentView: 'room', cameraSettled: false, exiting: false, hoveredId: null })
   },
 
   // Called once a monitor's power-off animation has finished — now move camera.
-  finishExit: () => set({ currentView: 'room', cameraSettled: false, exiting: false }),
+  finishExit: () => set({ currentView: 'room', cameraSettled: false, exiting: false, hoveredId: null }),
 
   // ---- Hover (drives the outline effect / cursor) ---------------------------
+  // Set by mesh hover (Interactive), nav-tab hover (NavBar), and the music
+  // toggle. May be an object id or a `group` key (e.g. 'speakers').
   hoveredId: null,
   setHovered: (id) => set({ hoveredId: id }),
 
@@ -106,6 +110,16 @@ export const useStore = create((set, get) => ({
 
   // Advance to the next track, looping back to the beginning of the shuffle.
   nextTrack: () => set((s) => ({ trackIndex: (s.trackIndex + 1) % s.order.length })),
+
+  // ---- Status dashboard (monitor2) ------------------------------------------
+  // NowPlayingController fetches Spotify + preloads images while the camera is
+  // still flying in, so StatusScreen only reveals once everything is loaded
+  // (no tiles visibly popping in). `*Ready` gate the dashboard's fade-in.
+  nowPlaying: statusData.fallbackTrack,
+  nowPlayingReady: false,
+  setNowPlaying: (data) => set({ nowPlaying: data, nowPlayingReady: true }),
+  coverReady: false,
+  setCoverReady: () => set({ coverReady: true }),
 }))
 
 // Dev-only: poke at state from the browser console (window.__store.getState()).
